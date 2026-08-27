@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wildfire map</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  color-scheme: dark;
+  --surface-0:#111110; --surface-1:#1a1a19; --surface-2:#232322;
+  --line:#3a3a37;
+  --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8e8d84;
+  --accent:#3987e5;
+  --perimeter:#d95926;
+  --viirs:#eda100;
+  --modis:#9085e9;
+  --goes:#199e70;
+  --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+  --ring:#1a1a19;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--surface-0);color:var(--text-primary);
+  font:14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:12px 18px;background:var(--surface-1);border-bottom:1px solid var(--line)}
+header h1{font-size:16px;margin:0;font-weight:650;letter-spacing:-0.01em}
+header .spacer{flex:1}
+label.field{color:var(--text-secondary);font-size:13px;display:flex;align-items:center;gap:6px}
+button,select{font:inherit;color:var(--text-primary);background:var(--surface-2);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer}
+button:hover,select:hover{border-color:var(--text-muted)}
+button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+#banner{display:none;padding:9px 18px;background:var(--surface-2);border-bottom:1px solid var(--line);
+  color:var(--critical);font-size:13px}
+main{display:grid;grid-template-columns:minmax(300px,360px) 1fr;height:calc(100% - 54px)}
+@media (max-width:860px){main{grid-template-columns:1fr;height:auto}#map{height:60vh}}
+aside{overflow:auto;background:var(--surface-1);border-right:1px solid var(--line);padding:14px 16px 40px}
+#map{height:100%;min-height:420px;background:var(--surface-2)}
+.dim .leaflet-tile-pane{filter:brightness(0.62) saturate(0.75) contrast(1.05)}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);
+  margin:22px 0 8px;font-weight:650}
+h2:first-of-type{margin-top:2px}
+.layer{border:1px solid var(--line);border-radius:8px;padding:9px 10px;margin-bottom:8px;background:var(--surface-2)}
+.layer .top{display:flex;gap:9px;align-items:flex-start}
+.layer input[type=checkbox]{margin-top:3px;accent-color:var(--accent)}
+.layer .name{font-weight:600;display:flex;align-items:center;gap:8px;line-height:1.3}
+.layer .meta{color:var(--text-secondary);font-size:12px;margin-top:3px}
+.layer .src{color:var(--text-muted);font-size:11.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;margin-top:4px;word-break:break-all}
+.mk{flex:none;display:inline-block}
+.mk-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--ring);background:var(--text-muted)}
+.mk-ring{width:16px;height:10px;border:2px solid var(--perimeter);border-radius:3px;background:rgba(217,89,38,0.18)}
+.mk-diamond{width:12px;height:12px;transform:rotate(45deg);border:2px solid var(--ring);background:var(--viirs)}
+.mk-square{width:12px;height:12px;border-radius:2px;border:2px solid var(--ring);background:var(--modis)}
+.mk-tri{width:14px;height:12px;background:var(--goes);clip-path:polygon(50% 0,100% 100%,0 100%)}
+.upd{color:var(--text-muted);font-size:11.5px;margin-top:4px;font-variant-numeric:tabular-nums}
+.upd b{color:var(--text-secondary);font-weight:600}
+.upd.busy{opacity:0.55}
+.upd.busy::after{content:" refreshing...";color:var(--accent)}
+.warnnote{color:var(--warning)}
+.busy2{color:var(--accent)}
+.legend div{display:flex;align-items:center;gap:9px;margin:6px 0;font-size:13px}
+.stat{color:var(--text-secondary);font-size:13px}
+.stat b{color:var(--text-primary);font-variant-numeric:tabular-nums}
+table{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:6px}
+th,td{text-align:left;padding:5px 7px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--text-muted);font-weight:600;position:sticky;top:0;background:var(--surface-1)}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+#tableWrap{display:none;max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+#tableWrap.on{display:block}
+.err{color:var(--critical);font-size:12.5px;margin:6px 0}
+.foot{color:var(--text-muted);font-size:11.5px;line-height:1.55}
+.foot code{font-size:11px;word-break:break-all;color:var(--text-secondary)}
+.leaflet-popup-content{font:13px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;margin:10px 12px}
+.leaflet-popup-content h3{margin:0 0 5px;font-size:14px}
+.leaflet-popup-content dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:0}
+.leaflet-popup-content dt{color:#52514e}
+.leaflet-popup-content dd{margin:0;font-variant-numeric:tabular-nums}
+.hot-v{width:11px;height:11px;transform:rotate(45deg);background:var(--viirs);border:2px solid var(--ring)}
+.hot-m{width:11px;height:11px;border-radius:2px;background:var(--modis);border:2px solid var(--ring)}
+.hot-g{width:13px;height:11px;background:var(--goes);clip-path:polygon(50% 0,100% 100%,0 100%);
+  filter:drop-shadow(0 0 1px var(--ring)) drop-shadow(0 0 1px var(--ring))}
+</style>
+</head>
+<body>
+<header>
+  <h1>Wildfire map</h1>
+  <span class="spacer"></span>
+  <label class="field">Basemap
+    <select id="basemap"></select>
+  </label>
+  <label class="field">Area
+    <select id="area"></select>
+  </label>
+  <label class="field"><input type="checkbox" id="auto" checked style="accent-color:var(--accent)"> Auto refresh</label>
+  <button id="tableBtn" aria-pressed="false">Table view</button>
+  <button id="reload">Reload data</button>
+</header>
+<div id="banner"></div>
+<main>
+<aside>
+  <h2>Layers</h2>
+  <div id="layers"></div>
+
+  <h2>Record age (incident markers)</h2>
+  <p class="upd" id="lastRefresh">Last update: not loaded yet</p>
+  <div class="legend">
+    <div><span class="mk mk-dot" style="background:var(--good)"></span> Updated under 6 h</div>
+    <div><span class="mk mk-dot" style="background:var(--warning)"></span> 6 to 24 h</div>
+    <div><span class="mk mk-dot" style="background:var(--serious)"></span> 1 to 3 days</div>
+    <div><span class="mk mk-dot" style="background:var(--critical)"></span> Over 3 days</div>
+    <div><span class="mk mk-dot" style="background:var(--text-muted)"></span> No timestamp on the record</div>
+  </div>
+  <p class="stat" style="margin-top:8px">Color is how old the record is, not how big or dangerous the fire is. Each popup names the field the age came from.</p>
+
+  <h2>Incidents in view</h2>
+  <p class="stat" id="counts">Loading.</p>
+  <div id="tableWrap"><table id="tbl">
+    <thead><tr><th>Incident</th><th>State</th><th class="num">Acres</th><th class="num">% cont.</th><th>Last update</th><th class="num">Age (h)</th></tr></thead>
+    <tbody></tbody></table></div>
+  <div id="errors"></div>
+
+  <h2>Sources</h2>
+  <p class="upd" id="activeBase">Basemap: loading</p>
+  <p class="foot">
+    All four data layers are public ArcGIS feature services published in the Esri Living Atlas from federal feeds. No account, key, or token is required, and each was queried anonymously to confirm that.<br><br>
+    Incidents and perimeters: NIFC and IRWIN interagency records, <code>services9.arcgis.com/.../USA_Wildfires_v1</code><br>
+    VIIRS hotspots: NASA FIRMS 375 m detections, <code>.../Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity</code><br>
+    MODIS hotspots: NASA FIRMS 1 km detections, last 48 hours, <code>.../MODIS_Thermal_v1</code><br>
+    GOES detections: NOAA NESDIS Hazard Mapping System, filtered to GOES-East and GOES-West, <code>services2.arcgis.com/.../NOAA_Satellite_Fire_Detections_(v1)</code><br><br>
+    Basemaps: six options, all served without an account or key. USGS Imagery Topo, USGS Topo, and USGS Shaded Relief come from The National Map and are US federal public domain. NASA GIBS Blue Marble is NASA EOSDIS, public domain, and caps out at zoom 8. OpenStreetMap and OpenTopoMap are community tile servers under their own usage policies, fine for light personal use, not for heavy traffic. Map library: Leaflet 1.9.4 from cdnjs, open source under BSD-2.<br><br>
+    Markers are drawn with plain CSS and SVG shapes. No third-party icon files are used.<br><br>
+    Polling: incidents and GOES every 5 minutes, perimeters and VIIRS every 10, MODIS every 15, and only for layers that are switched on. Nothing is requested while the tab is in the background or the browser is offline, one request per layer at a time, with exponential backoff after a failure. No API keys, tokens, accounts, cookies, local storage, or analytics are used anywhere on this page.
+  </p>
+</aside>
+<div id="map"></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const AREAS = [
+  ["California",       [[32.5,-124.5],[42.1,-114.1]]],
+  ["Oregon",           [[41.9,-124.6],[46.3,-116.4]]],
+  ["Washington",       [[45.5,-124.8],[49.1,-116.9]]],
+  ["Nevada",           [[35.0,-120.0],[42.0,-114.0]]],
+  ["Arizona",          [[31.3,-114.9],[37.0,-109.0]]],
+  ["Idaho",            [[41.9,-117.3],[49.0,-111.0]]],
+  ["Montana",          [[44.3,-116.1],[49.1,-104.0]]],
+  ["Wyoming",          [[40.9,-111.1],[45.0,-104.0]]],
+  ["Utah",             [[36.9,-114.1],[42.0,-109.0]]],
+  ["Colorado",         [[36.9,-109.1],[41.1,-102.0]]],
+  ["New Mexico",       [[31.3,-109.1],[37.0,-103.0]]],
+  ["Texas",            [[25.8,-106.7],[36.6,-93.5]]],
+  ["Alaska",           [[54.0,-170.0],[72.0,-129.0]]],
+  ["Western US",       [[31.0,-125.0],[49.5,-100.0]]],
+  ["Continental US",   [[24.0,-125.0],[49.5,-66.9]]]
+];
+
+// Living Atlas + NOAA services, all public and keyless
+const S9 = "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/";
+const LAYERS = [
+  { key:"incidents", name:"Active incidents", mark:"mk-dot",
+    meta:"NIFC / IRWIN interagency records, colored by record age",
+    src:"USA_Wildfires_v1 / layer 0",
+    url:S9+"USA_Wildfires_v1/FeatureServer/0", kind:"incident", refreshMs:5*60e3, on:true },
+  { key:"perimeters", name:"Fire perimeters", mark:"mk-ring",
+    meta:"NIFC current perimeters",
+    src:"USA_Wildfires_v1 / layer 1",
+    url:S9+"USA_Wildfires_v1/FeatureServer/1", kind:"perimeter", refreshMs:10*60e3, on:true },
+  { key:"viirs", name:"VIIRS hotspots (375 m)", mark:"mk-diamond",
+    meta:"NASA FIRMS thermal detections, 3 to 4 looks a day",
+    src:"Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity / layer 0",
+    url:S9+"Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0", kind:"viirs", refreshMs:10*60e3, on:false },
+  { key:"goes", name:"GOES fire detections", mark:"mk-tri",
+    meta:"NOAA HMS, GOES-East and GOES-West, last 24 hours, scans every 5 to 10 min",
+    src:"NOAA_Satellite_Fire_Detections_(v1) / layer 0",
+    url:"https://services2.arcgis.com/C8EMgrsFcRFL6LrL/arcgis/rest/services/NOAA_Satellite_Fire_Detections_(v1)/FeatureServer/0",
+    where:"Satellite LIKE 'GOES%' AND YearDay >= {yd24}", orderBy:"YearDay DESC,Time DESC",
+    kind:"goes", refreshMs:5*60e3, on:false },
+  { key:"modis", name:"MODIS hotspots (1 km)", mark:"mk-square",
+    meta:"NASA FIRMS thermal detections, last 48 hours",
+    src:"MODIS_Thermal_v1 / layer 0",
+    url:S9+"MODIS_Thermal_v1/FeatureServer/0", kind:"modis", refreshMs:15*60e3, on:false }
+];
+const CAP = 1000;
+
+const $ = (id) => document.getElementById(id);
+const err = (m) => {
+  const box = $("errors");
+  const d = document.createElement("div"); d.className = "err"; d.textContent = m;
+  box.appendChild(d);
+  while (box.children.length > 6) box.removeChild(box.firstChild);
+};
+
+// all keyless, all checked by eye at z5 and z14
+const USGS = "https://basemap.nationalmap.gov/arcgis/rest/services/";
+const BASEMAPS = [
+  { name:"USGS Imagery Topo", url:USGS+"USGSImageryTopo/MapServer/tile/{z}/{y}/{x}",
+    attr:"USGS The National Map", maxNativeZoom:16, dim:false },
+  { name:"USGS Topo", url:USGS+"USGSTopo/MapServer/tile/{z}/{y}/{x}",
+    attr:"USGS The National Map", maxNativeZoom:16, dim:true },
+  { name:"USGS Shaded Relief", url:USGS+"USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}",
+    attr:"USGS The National Map", maxNativeZoom:15, dim:true },
+  { name:"OpenStreetMap", url:"https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attr:"&copy; OpenStreetMap contributors", maxNativeZoom:18, dim:true },
+  { name:"OpenTopoMap", url:"https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+    attr:"&copy; OpenTopoMap (CC-BY-SA), &copy; OpenStreetMap contributors", maxNativeZoom:16, dim:true },
+  { name:"NASA GIBS Blue Marble", url:"https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg",
+    attr:"NASA EOSDIS GIBS", maxNativeZoom:8, dim:false }
+];
+const HAS_L = typeof L !== "undefined";
+let map = null, baseLayer = null;
+function setBasemap(i) {
+  const b = BASEMAPS[i];
+  if (baseLayer) map.removeLayer(baseLayer);
+  baseLayer = L.tileLayer(b.url, {
+    subdomains: "abc",
+    maxZoom: 18, maxNativeZoom: b.maxNativeZoom, attribution: b.attr
+  }).addTo(map);
+  baseLayer.bringToBack();
+  $("map").classList.toggle("dim", !!b.dim);
+  const el = $("activeBase");
+  if (el) el.innerHTML = "Basemap: <b>" + b.name + "</b>, " + b.attr.replace(/&copy;/g, "(c)");
+}
+function renderBasemaps() {
+  const sel = $("basemap");
+  BASEMAPS.forEach((b, i) => { const o = document.createElement("option"); o.value = i; o.textContent = b.name; sel.appendChild(o); });
+  sel.addEventListener("change", () => { if (map) setBasemap(+sel.value); });
+}
+if (HAS_L) {
+  map = L.map("map", { zoomControl: true }).fitBounds(AREAS[0][1]);
+  setBasemap(0);
+} else {
+  $("banner").style.display = "block";
+  $("banner").textContent = "Leaflet did not load from the CDN, so the map is off. The layer list and the incident table still work.";
+  $("map").style.display = "none";
+  document.querySelector("main").style.gridTemplateColumns = "minmax(300px, 640px)";
+}
+
+const BUCKETS = [
+  { max: 6,        label: "under 6 h",   v: "--good" },
+  { max: 24,       label: "6 to 24 h",   v: "--warning" },
+  { max: 72,       label: "1 to 3 days", v: "--serious" },
+  { max: Infinity, label: "over 3 days", v: "--critical" }
+];
+const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function bucket(h) {
+  if (h === null || !isFinite(h)) return { label: "no timestamp", color: cssVar("--text-muted") };
+  const b = BUCKETS.find((x) => h < x.max);
+  return { label: b.label, color: cssVar(b.v) };
+}
+// field names as the four services actually return them, best first
+const TIME_FIELDS = ["ModifiedOnDateTime","DateCurrent","PolygonDateTime","esritimeutc","acq_date","ACQ_DATE",
+  "CreateDate","FireDiscoveryDateTime"];
+const HOURS_FIELDS = ["hours_old","HOURS_OLD"];
+const NAME_FIELDS = ["IncidentName"];
+const ACRE_FIELDS = ["DailyAcres","GISAcres","CalculatedAcres"];
+const CONT_FIELDS = ["PercentContained"];
+const STATE_FIELDS = ["POOState"];
+const EXTRA_FIELDS = ["confidence","CONFIDENCE","frp","FRP","satellite","SATELLITE","daynight","DAYNIGHT",
+  "IncidentTypeCategory","FireCause","GACC"];
+
+function pick(p, names) {
+  for (const n of names) if (p && p[n] !== undefined && p[n] !== null && p[n] !== "") return [n, p[n]];
+  return [null, null];
+}
+function toDate(v) {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "number") return new Date(v > 1e12 ? v : v * 1000);
+  const d = new Date(v); return isNaN(d) ? null : d;
+}
+function age(p) {
+  const [tf, tv] = pick(p, TIME_FIELDS);
+  const d = toDate(tv);
+  if (d) return { hours: (Date.now() - d.getTime()) / 36e5, field: tf, when: d };
+  const [hf, hv] = pick(p, HOURS_FIELDS);
+  if (hv !== null && isFinite(hv)) return { hours: Number(hv), field: hf, when: new Date(Date.now() - hv * 36e5) };
+  if (p.YearDay) {
+    const d2 = yearDayToDate(p.YearDay, p.Time);
+    if (d2) return { hours: (Date.now() - d2.getTime()) / 36e5, field: "YearDay + Time (UTC)", when: d2 };
+  }
+  return { hours: null, field: null, when: null };
+}
+// HMS stamps are YearDay (2026239) + Time ("1751", UTC)
+function yearDayToDate(yd, hhmm) {
+  const y = Math.floor(yd / 1000), doy = yd % 1000;
+  if (!y || !doy) return null;
+  const t = String(hhmm === undefined || hhmm === null ? "0000" : hhmm).padStart(4, "0");
+  return new Date(Date.UTC(y, 0, 1) + (doy - 1) * 864e5 + Number(t.slice(0, 2)) * 36e5 + Number(t.slice(2)) * 6e4);
+}
+function yearDayNum(d) {
+  const start = Date.UTC(d.getUTCFullYear(), 0, 1);
+  return d.getUTCFullYear() * 1000 + Math.floor((d.getTime() - start) / 864e5) + 1;
+}
+const fmt = (d) => d ? d.toLocaleString(undefined, { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" }) : "unknown";
+const num = (v) => (v === null || v === undefined || v === "") ? "" : Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 });
+const esc = (s) => String(s).replace(/[<>&"]/g, (c) => ({ "<":"&lt;", ">":"&gt;", "&":"&amp;", '"':"&quot;" }[c]));
+
+const groups = {};
+function renderLayerList() {
+  const box = $("layers"); box.innerHTML = "";
+  LAYERS.forEach((l, i) => {
+    const el = document.createElement("div"); el.className = "layer";
+    el.innerHTML =
+      '<div class="top"><input type="checkbox" id="lyr' + i + '"' + (l.on ? " checked" : "") + '>' +
+      '<label for="lyr' + i + '"><span class="name"><span class="mk ' + l.mark + '"></span>' + esc(l.name) + "</span>" +
+      '<div class="meta">' + esc(l.meta) + '</div><div class="src">' + esc(l.src) + '</div>' +
+      '<div class="upd" id="upd-' + l.key + '">Last update: not loaded yet</div></label></div>';
+    box.appendChild(el);
+    el.querySelector("input").addEventListener("change", (e) => {
+      l.on = e.target.checked;
+      if (!map) return;
+      // hide only: no refetch, no restamp
+      if (!l.on) { if (groups[l.key]) map.removeLayer(groups[l.key]); return; }
+      if (groups[l.key]) { groups[l.key].addTo(map); }
+      else if (l._cache) { show(l, l._cache.gj); stampLayer(l, l._cache); }
+      load(l);
+    });
+  });
+}
+function renderAreas() {
+  const sel = $("area");
+  AREAS.forEach(([name], i) => { const o = document.createElement("option"); o.value = i; o.textContent = name; sel.appendChild(o); });
+  sel.addEventListener("change", () => {
+    const b = AREAS[+sel.value][1];
+    if (map) map.fitBounds(b); else loadAll(true);
+  });
+}
+
+const CACHE_MS = 90000;
+const PAD = 0.25;  // overfetch past the view so small pans are free
+
+function bounds() {
+  if (map) { const b = map.getBounds(); return { xmin:b.getWest(), ymin:b.getSouth(), xmax:b.getEast(), ymax:b.getNorth() }; }
+  const a = AREAS[+$("area").value || 0][1];
+  return { xmin:a[0][1], ymin:a[0][0], xmax:a[1][1], ymax:a[1][0] };
+}
+function padBox(b, f) {
+  const dx = (b.xmax - b.xmin) * f, dy = (b.ymax - b.ymin) * f;
+  return { xmin:b.xmin - dx, ymin:b.ymin - dy, xmax:b.xmax + dx, ymax:b.ymax + dy };
+}
+function covers(outer, inner) {
+  return !!outer && outer.xmin <= inner.xmin && outer.ymin <= inner.ymin &&
+         outer.xmax >= inner.xmax && outer.ymax >= inner.ymax;
+}
+function queryUrl(l, box) {
+  const g = Object.assign({}, box, { spatialReference: { wkid: 4326 } });
+  const yd24 = yearDayNum(new Date(Date.now() - 864e5));
+  const where = (l.where || "1=1").replace("{yd24}", String(yd24));
+  return l.url + "/query?where=" + encodeURIComponent(where) +
+    "&outFields=*&outSR=4326&returnGeometry=true&resultRecordCount=" + CAP +
+    (l.orderBy ? "&orderByFields=" + encodeURIComponent(l.orderBy) : "") +
+    "&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects" +
+    "&geometry=" + encodeURIComponent(JSON.stringify(g)) + "&f=geojson";
+}
+function popup(p, kind) {
+  const [, name] = pick(p, NAME_FIELDS);
+  const a = age(p), b = bucket(a.hours);
+  const [, acres] = pick(p, ACRE_FIELDS);
+  const [, cont] = pick(p, CONT_FIELDS);
+  const [, st] = pick(p, STATE_FIELDS);
+  const rowsOut = [];
+  if (acres) rowsOut.push(["Acres", num(acres)]);
+  if (cont !== null && cont !== "") rowsOut.push(["Contained", num(cont) + "%"]);
+  if (st) rowsOut.push(["State", esc(st)]);
+  EXTRA_FIELDS.forEach((f) => { if (p[f] !== undefined && p[f] !== null && p[f] !== "") rowsOut.push([f.toLowerCase(), esc(p[f])]); });
+  rowsOut.push(["Record updated", fmt(a.when)]);
+  rowsOut.push(["Age", a.hours === null ? "unknown" : a.hours.toFixed(1) + " h (" + b.label + ")"]);
+  rowsOut.push(["Age field", esc(a.field || "none found")]);
+  return "<h3>" + esc(name || kind) + "</h3><dl>" +
+    rowsOut.map((r) => "<dt>" + r[0] + "</dt><dd>" + r[1] + "</dd>").join("") + "</dl>";
+}
+function styleFor(l) {
+  if (l.kind === "perimeter") return { color: cssVar("--perimeter"), weight: 2, fillOpacity: 0.14, fillColor: cssVar("--perimeter") };
+  return {};
+}
+function markerFor(l, f, latlng) {
+  if (l.kind === "viirs") return L.marker(latlng, { icon: L.divIcon({ className:"", html:'<div class="hot-v"></div>', iconSize:[11,11] }) });
+  if (l.kind === "modis") return L.marker(latlng, { icon: L.divIcon({ className:"", html:'<div class="hot-m"></div>', iconSize:[11,11] }) });
+  if (l.kind === "goes") return L.marker(latlng, { icon: L.divIcon({ className:"", html:'<div class="hot-g"></div>', iconSize:[13,11] }) });
+  const b = bucket(age(f.properties).hours);
+  return L.circleMarker(latlng, { radius: 6, weight: 2, color: cssVar("--ring"), fillColor: b.color, fillOpacity: 1 });
+}
+function show(l, gj) {
+  if (!map) return;
+  const g = L.geoJSON(gj, {
+    style: () => styleFor(l),
+    pointToLayer: (f, latlng) => markerFor(l, f, latlng),
+    onEachFeature: (f, lyr) => lyr.bindPopup(popup(f.properties || {}, l.name))
+  });
+  const old = groups[l.key];
+  groups[l.key] = g;
+  if (l.on) g.addTo(map);
+  if (old) { map.removeLayer(old); old.clearLayers(); }
+}
+// one pass: counts, newest record, and a signature used to skip pointless redraws
+function summarize(gj) {
+  const f = gj.features || [];
+  let newest = null, timed = 0;
+  f.forEach((x) => {
+    const a = age(x.properties || {});
+    if (a.when) { timed++; if (!newest || a.when > newest) newest = a.when; }
+  });
+  const id = (x) => x ? String(x.id !== undefined ? x.id : (x.properties && (x.properties.OBJECTID || x.properties.FID))) : "-";
+  return { n: f.length, newest: newest, timed: timed,
+    sig: f.length + "|" + (newest ? newest.getTime() : 0) + "|" + id(f[0]) + "|" + id(f[f.length - 1]) };
+}
+function busy(l, on) {
+  const el = document.getElementById("upd-" + l.key);
+  if (el) el.classList.toggle("busy", !!on);
+}
+function stampLayer(l, c, note) {
+  const el = document.getElementById("upd-" + l.key);
+  if (!el) return;
+  const tail = note ? ' <span class="warnnote">' + note + "</span>" : "";
+  if (!c) { el.innerHTML = "Last update: <b>not loaded yet</b>" + tail; return; }
+  if (!c.n) { el.innerHTML = "Last update: <b>no records in this view</b>" + tail; return; }
+  if (!c.newest) { el.innerHTML = "Last update: <b>no timestamp on these records</b> (" + c.n + " shown)" + tail; return; }
+  const hrs = (Date.now() - c.newest.getTime()) / 36e5;
+  el.innerHTML = "Last update: <b>" + fmt(c.newest) + "</b> (" + hrs.toFixed(1) +
+    " h ago, newest of " + c.timed + ")" +
+    (c.checked ? ', checked ' + new Date(c.checked).toLocaleTimeString() : "") + tail;
+}
+async function load(l, force) {
+  if (l._inflight) return; // one request per layer at a time
+  const view = bounds();
+  const c = l._cache;
+  if (!force && c && covers(c.box, view) && Date.now() - c.ts < CACHE_MS) {
+    if (!groups[l.key]) show(l, c.gj);
+    stampLayer(l, c);
+    if (l.kind === "incident") rows(c.gj);
+    return;
+  }
+  l._inflight = true;
+  busy(l, true);
+  try {
+    const box = padBox(view, PAD);
+    const res = await fetch(queryUrl(l, box));
+    if (res.status === 429 || res.status === 503) throw new Error("service is throttling (" + res.status + ")");
+    const gj = await res.json();
+    if (gj.error) throw new Error(gj.error.message || "service error");
+    const sum = summarize(gj);
+    if (sum.n >= CAP) err(l.name + ": showing the first " + CAP + " records in view, the service returned at least that many.");
+    const unchanged = c && c.sig === sum.sig && covers(box, view);
+    l._cache = { gj: gj, box: box, ts: Date.now(), n: sum.n, newest: sum.newest, timed: sum.timed, sig: sum.sig, checked: Date.now() };
+    l._fails = 0;
+    if (unchanged && groups[l.key]) { l._cache.gj = c.gj; } // same data, skip the redraw
+    else { show(l, gj); if (l.kind === "incident") rows(gj); }
+    stampLayer(l, l._cache);
+  } catch (e) {
+    l._fails = (l._fails || 0) + 1;
+    err("Could not refresh " + l.name + ": " + e.message);
+    if (l._cache) l._cache.checked = Date.now();
+    stampLayer(l, l._cache, l._cache ? "refresh failed, still showing this set" : "no data yet");
+  } finally {
+    l._inflight = false;
+    busy(l, false);
+  }
+}
+function rows(gj) {
+  const list = (gj.features || []).map((f) => {
+    const p = f.properties || {}, a = age(p);
+    return { name: pick(p, NAME_FIELDS)[1] || "(unnamed)", state: pick(p, STATE_FIELDS)[1] || "",
+      acres: pick(p, ACRE_FIELDS)[1], cont: pick(p, CONT_FIELDS)[1], when: a.when, hours: a.hours };
+  });
+  const timed = list.filter((r) => r.hours !== null).map((r) => r.hours).sort((a, b) => a - b);
+  const median = timed.length ? timed[Math.floor(timed.length / 2)] : null;
+  const stale = list.filter((r) => r.hours !== null && r.hours >= 24).length;
+  $("counts").innerHTML = "<b>" + list.length + "</b> incident records in view. Median record age <b>" +
+    (median === null ? "unknown" : median.toFixed(1) + " h") + "</b>. <b>" + stale + "</b> older than 24 h.";
+  const tb = document.querySelector("#tbl tbody"); tb.innerHTML = "";
+  list.sort((a, b) => (b.hours || 0) - (a.hours || 0)).forEach((r) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = "<td>" + esc(r.name) + "</td><td>" + esc(r.state) + '</td><td class="num">' + num(r.acres) +
+      '</td><td class="num">' + num(r.cont) + "</td><td>" + fmt(r.when) + '</td><td class="num">' +
+      (r.hours === null ? "" : r.hours.toFixed(1)) + "</td>";
+    tb.appendChild(tr);
+  });
+}
+function stampRefresh(text) {
+  $("lastRefresh").innerHTML = text || ("Last update: <b>" + new Date().toLocaleTimeString() +
+    "</b>, all visible layers refreshed");
+}
+async function loadAll(force) {
+  $("errors").innerHTML = "";
+  const on = LAYERS.filter((l) => l.on);
+  if (!on.length) { stampRefresh("Last update: <b>no layers switched on</b>"); return; }
+  stampRefresh('Last update: <span class="busy2">refreshing...</span>');
+  await Promise.all(on.map((l) => load(l, force)));
+  showNext();
+}
+
+// tick every minute, each layer decides if it is due
+const TICK_MS = 60e3;
+const DEFAULT_REFRESH = 10 * 60e3;
+let autoTimer = null;
+function dueIn(l) {
+  const every = (l.refreshMs || DEFAULT_REFRESH) * Math.min(8, Math.pow(2, l._fails || 0));
+  const last = l._cache ? (l._cache.checked || l._cache.ts) : 0;
+  return last ? last + every - Date.now() : 0;
+}
+async function tick() {
+  if (!$("auto").checked || document.hidden || navigator.onLine === false) { showNext(); return; }
+  const due = LAYERS.filter((l) => l.on && !l._inflight && dueIn(l) <= 0);
+  for (let i = 0; i < due.length; i++) {
+    await load(due[i], true);
+    if (i < due.length - 1) await new Promise((r) => setTimeout(r, 1500)); // stagger
+  }
+  if (due.length) stampRefresh();
+  showNext();
+}
+function showNext() {
+  const on = LAYERS.filter((l) => l.on);
+  if (!$("auto").checked) { stampRefresh("Last update: <b>auto refresh is off</b>"); return; }
+  if (document.hidden || !on.length) return;
+  const next = Math.min.apply(null, on.map(dueIn).concat([Infinity]));
+  if (!isFinite(next)) return;
+  const mins = Math.max(0, Math.round(next / 60e3));
+  stampRefresh("Last update: <b>" + new Date().toLocaleTimeString() + "</b>, next check in " +
+    (mins <= 0 ? "under a minute" : mins + " min"));
+}
+function startAuto() {
+  clearInterval(autoTimer);
+  autoTimer = setInterval(tick, TICK_MS);
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) tick(); });
+window.addEventListener("online", () => tick());
+
+renderLayerList();
+renderBasemaps();
+renderAreas();
+$("reload").addEventListener("click", () => loadAll(true));
+$("tableBtn").addEventListener("click", (e) => {
+  const w = $("tableWrap"), on = !w.classList.contains("on");
+  w.classList.toggle("on", on); e.currentTarget.setAttribute("aria-pressed", String(on));
+});
+if (map) { let t = null; map.on("moveend", () => { clearTimeout(t); t = setTimeout(() => loadAll(false), 500); }); }
+$("auto").addEventListener("change", () => { if ($("auto").checked) tick(); else showNext(); });
+startAuto();
+loadAll(true);
+</script>
+</body>
+</html>
