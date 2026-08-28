@@ -131,7 +131,19 @@ const map=L.map("map",{zoomControl:true}).fitBounds([[25.8,-106.7],[36.6,-93.5]]
 L.tileLayer("https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",{
   maxZoom:18,maxNativeZoom:16,attribution:"USGS The National Map"
 }).addTo(map);
-const gaugeLayer=L.layerGroup().addTo(map), alertLayer=L.geoJSON(null).addTo(map), sviLayer=L.geoJSON(null).addTo(map);
+const gaugeLayer=L.layerGroup().addTo(map);
+const alertLayer=L.geoJSON(null,{
+  style:f=>({color:"#ff5f5f",weight:2,fillColor:"#ff5f5f",fillOpacity:.12,dashArray:f.properties?.event==="Flood Watch"?"5 4":null}),
+  onEachFeature:(f,l)=>l.bindPopup("<h3>"+esc(f.properties?.event||"NWS alert")+"</h3><b>"+esc(f.properties?.headline||"")+"</b><p>"+esc(f.properties?.areaDesc||"")+"</p><div>Effective: "+fmtTime(f.properties?.effective)+"</div><div>Expires: "+fmtTime(f.properties?.expires)+"</div>")
+}).addTo(map);
+function sviStyle(f){
+  const v=Math.max(0,Math.min(1,+f.properties?.RPL_THEMES||0));
+  return {color:"#8d79dd",weight:.7,fillColor:"#8d79dd",fillOpacity:.05+.25*v};
+}
+const sviLayer=L.geoJSON(null,{
+  style:sviStyle,
+  onEachFeature:(f,l)=>{const p=f.properties||{};l.bindPopup("<h3>"+esc(p.COUNTY||"County")+"</h3><dl><dt>State</dt><dd>"+esc(p.ST_ABBR||"")+"</dd><dt>Population</dt><dd>"+((+p.E_TOTPOP||0).toLocaleString())+"</dd><dt>Overall SVI rank</dt><dd>"+((+p.RPL_THEMES||0).toFixed(2))+"</dd></dl><p>2022 CDC/ATSDR SVI context.</p>");}
+}).addTo(map);
 L.control.layers(null,{"USGS river gauges":gaugeLayer,"NWS flood alerts":alertLayer,"CDC SVI counties":sviLayer},{collapsed:false}).addTo(map);
 
 let gauges=[],alerts=[],counties=[],timers={},inflight={usgs:false,nws:false,svi:false},cache={};
@@ -210,21 +222,12 @@ function renderGauges(){
 }
 function renderAlerts(){
   alertLayer.clearLayers();
-  alertLayer=L.geoJSON({type:"FeatureCollection",features:alerts},{
-    style:f=>({color:"#ff5f5f",weight:2,fillColor:"#ff5f5f",fillOpacity:.12,dashArray:f.properties?.event==="Flood Watch"?"5 4":null}),
-    onEachFeature:(f,l)=>l.bindPopup("<h3>"+esc(f.properties?.event||"NWS alert")+"</h3><b>"+esc(f.properties?.headline||"")+"</b><p>"+esc(f.properties?.areaDesc||"")+"</p><div>Effective: "+fmtTime(f.properties?.effective)+"</div><div>Expires: "+fmtTime(f.properties?.expires)+"</div>")
-  }).addTo(map);
+  alertLayer.addData({type:"FeatureCollection",features:alerts});
   $("alertCount").textContent=alerts.length;
-}
-function sviStyle(f){
-  const v=Math.max(0,Math.min(1,+f.properties?.RPL_THEMES||0));
-  return {color:"#8d79dd",weight:.7,fillColor:"#8d79dd",fillOpacity:.05+.25*v};
 }
 function renderSVI(){
   sviLayer.clearLayers();
-  sviLayer=L.geoJSON({type:"FeatureCollection",features:counties},{
-    style:sviStyle,onEachFeature:(f,l)=>{const p=f.properties||{};l.bindPopup("<h3>"+esc(p.COUNTY||"County")+"</h3><dl><dt>State</dt><dd>"+esc(p.ST_ABBR||"")+"</dd><dt>Population</dt><dd>"+((+p.E_TOTPOP||0).toLocaleString())+"</dd><dt>Overall SVI rank</dt><dd>"+((+p.RPL_THEMES||0).toFixed(2))+"</dd></dl><p>2022 CDC/ATSDR SVI context.</p>");}
-  }).addTo(map);
+  sviLayer.addData({type:"FeatureCollection",features:counties});
   $("countyCount").textContent=counties.length;
 }
 async function getJSON(url,opts={}){
