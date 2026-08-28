@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-8SVEH8WD1R"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-8SVEH8WD1R');
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RiverWatch | Flash Flood & River Flood Risk</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  color-scheme:dark;--bg:#101315;--panel:#171b1e;--card:#20262a;--line:#394148;
+  --text:#f6f8f9;--muted:#9eabb3;--accent:#55a7ff;--normal:#4db66b;--elev:#e6b73f;
+  --high:#e47a3c;--very:#d94a4a;--svi:#8d79dd;--alert:#ff5f5f
+}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{font:14px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:11px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+header h1{font-size:16px;margin:0}.spacer{flex:1}select,button{font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 9px}
+button{cursor:pointer}button:hover,select:hover{border-color:#66747d}
+main{display:grid;grid-template-columns:minmax(315px,385px) 1fr;height:calc(100% - 55px)}
+aside{overflow:auto;background:var(--panel);border-right:1px solid var(--line);padding:13px 15px 36px}
+#map{height:100%;min-height:440px;background:#222}
+@media(max-width:880px){main{grid-template-columns:1fr;height:auto}aside{border-right:0}#map{height:62vh}}
+h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:20px 0 7px}
+h2:first-child{margin-top:0}.note,.small{color:var(--muted);font-size:12px}.note{margin:7px 0}
+.legend div{display:flex;align-items:center;gap:8px;margin:5px 0}.dot{width:12px;height:12px;border-radius:50%;border:2px solid #111}
+.sw{width:18px;height:10px;border-radius:2px}.status{font-size:12px;color:var(--muted);margin:4px 0}
+.status b{color:var(--text)}.error{color:#ff8b8b;font-size:12px;margin:5px 0}
+.metric{display:grid;grid-template-columns:1fr auto;gap:7px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.metric b{font-variant-numeric:tabular-nums}.formula{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#cbd5db;background:#111719;border:1px solid var(--line);border-radius:7px;padding:8px}
+.sources{font-size:11.5px;color:var(--muted);line-height:1.55}.sources a{color:#9ccaff}.copyright{color:#7d878d;font-size:11px;margin-top:16px}
+.leaflet-popup-content{font:12.5px/1.45 ui-sans-serif,-apple-system,"Segoe UI",sans-serif;margin:10px 12px;min-width:240px}
+.leaflet-popup-content h3{font-size:14px;margin:0 0 5px}.leaflet-popup-content dl{display:grid;grid-template-columns:auto 1fr;gap:3px 9px;margin:0}
+.leaflet-popup-content dt{color:#667}.leaflet-popup-content dd{margin:0;font-variant-numeric:tabular-nums}
+.risk-pill{display:inline-block;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:700;color:white;margin-bottom:5px}
+.popup-btn{margin-top:8px;padding:5px 7px;font-size:11.5px;color:#222;background:#eef;border:1px solid #ccd;border-radius:5px;cursor:pointer}
+</style>
+</head>
+<body>
+<header>
+  <h1>RiverWatch: Flash Flood & River Flood Risk</h1><span class="spacer"></span>
+  <label>Area <select id="area"></select></label>
+  <button id="refresh">Refresh live layers</button>
+</header>
+<main>
+<aside>
+  <h2>What this map combines</h2>
+  <p class="note"><b>Hazard:</b> USGS river measurements and official NWS flood alerts. <b>Exposure:</b> county population. <b>Vulnerability:</b> CDC/ATSDR Social Vulnerability Index (SVI). Gauge colors use a transparent, non-official derived score to prioritize attention.</p>
+
+  <h2>Derived gauge risk</h2>
+  <div class="legend">
+    <div><span class="dot" style="background:var(--normal)"></span> Normal &lt; 20</div>
+    <div><span class="dot" style="background:var(--elev)"></span> Elevated 20–39</div>
+    <div><span class="dot" style="background:var(--high)"></span> High 40–64</div>
+    <div><span class="dot" style="background:var(--very)"></span> Very high 65–100</div>
+    <div><span class="sw" style="background:rgba(141,121,221,.45);border:1px solid #8d79dd"></span> CDC county SVI context</div>
+    <div><span class="sw" style="background:rgba(255,95,95,.2);border:2px solid #ff5f5f"></span> Official NWS flood alert polygon</div>
+  </div>
+  <div class="formula">score = alert points + stage-rise points + discharge-rise points + SVI points
+alert: Flood Advisory 20, Flood Watch 25, Flood Warning 50, Flash Flood Warning 65
+stage rise: min(20, max(0, Δgage_ft_6h × 10))
+discharge rise: min(10, max(0, %Δflow_6h / 10))
+SVI: 10 × county overall SVI percentile rank
+final score capped at 100</div>
+  <p class="small">This is not an NWS or USGS flood forecast. It does not use official flood-stage thresholds, which vary by gauge. Always follow official warnings and local emergency management.</p>
+
+  <h2>Live status</h2>
+  <div class="metric"><span>USGS gauges</span><b id="gaugeCount">—</b></div>
+  <div class="metric"><span>NWS flood alerts</span><b id="alertCount">—</b></div>
+  <div class="metric"><span>CDC counties in view</span><b id="countyCount">—</b></div>
+  <p class="status" id="usgsStatus">USGS: not loaded</p>
+  <p class="status" id="nwsStatus">NWS: not loaded</p>
+  <p class="status" id="sviStatus">SVI: not loaded</p>
+  <div id="errors"></div>
+
+  <h2>Refresh / vintage</h2>
+  <p class="small">USGS instantaneous values: checked hourly, consistent with USGS guidance that hourly polling is usually sufficient for IV data. NWS active alerts: checked every 5 minutes, slower than the NWS maximum recommended request frequency. CDC SVI: 2022 dataset, loaded once per area/view and cached. NWS quantitative precipitation: loaded only when requested in a gauge popup.</p>
+
+  <h2>Sources</h2>
+  <div class="sources">
+    <b>USGS Water Services, Instantaneous Values</b><br>
+    <a href="https://waterservices.usgs.gov/" target="_blank" rel="noopener">waterservices.usgs.gov</a><br>
+    Parameters: 00060 discharge (ft³/s), 00065 gage height (ft), 00010 water temperature (°C). Anonymous JSON requests bounded to the selected area.<br><br>
+    <b>National Weather Service API</b><br>
+    <a href="https://www.weather.gov/documentation/services-web-api" target="_blank" rel="noopener">weather.gov API documentation</a><br>
+    Active CAP/GeoJSON flood alerts plus on-demand point/grid quantitative precipitation forecast. Open U.S. government data; no key/account.<br><br>
+    <b>CDC/ATSDR Social Vulnerability Index 2022</b><br>
+    <a href="https://onemap.cdc.gov/onemapservices/rest/services/SVI/CDC_ATSDR_Social_Vulnerability_Index_2022_USA/FeatureServer/1" target="_blank" rel="noopener">CDC OneMap county FeatureServer</a><br>
+    Overall county SVI rank (RPL_THEMES) and estimated total population (E_TOTPOP), queried as GeoJSON for the current map area.<br><br>
+    <b>Basemap:</b> USGS The National Map Topo, U.S. federal public-domain source.<br><br>
+    <b>Preferred layer omitted:</b> FEMA National Flood Hazard Layer is not shown in this build because an anonymous browser/CORS path was not verified strongly enough during this run. No floodplain geometry is fabricated or substituted.
+  </div>
+  <div class="copyright">© 2026 MitchellCo Inc. Original interface, integration logic, and derived-score presentation only. Source datasets retain their own attribution/status.</div>
+</aside>
+<div id="map"></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const AREAS = [
+  ["Texas","TX",[25.8,-106.7,36.6,-93.5]],["California","CA",[32.5,-124.5,42.1,-114.1]],
+  ["Oregon","OR",[41.9,-124.6,46.3,-116.4]],["Washington","WA",[45.5,-124.8,49.1,-116.9]],
+  ["Arizona","AZ",[31.3,-114.9,37.0,-109.0]],["New Mexico","NM",[31.3,-109.1,37.0,-103.0]],
+  ["Colorado","CO",[36.9,-109.1,41.1,-102.0]],["Utah","UT",[36.9,-114.1,42.0,-109.0]],
+  ["Nevada","NV",[35.0,-120.0,42.0,-114.0]],["Idaho","ID",[41.9,-117.3,49.0,-111.0]],
+  ["Montana","MT",[44.3,-116.1,49.1,-104.0]],["Wyoming","WY",[40.9,-111.1,45.0,-104.0]]
+];
+const COLORS={normal:"#4db66b",elev:"#e6b73f",high:"#e47a3c",very:"#d94a4a"};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[<>&"]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]));
+const errors=[];
+function err(msg){errors.push(msg);while(errors.length>6)errors.shift();$("errors").innerHTML=errors.map(x=>'<div class="error">'+esc(x)+'</div>').join("");}
+function fmtTime(d){return d?new Date(d).toLocaleString():"unknown";}
+function area(){return AREAS[+$("area").value||0];}
+function areaBBox(){const b=area()[2];return {south:b[0],west:b[1],north:b[2],east:b[3]};}
+function boxString(b){return [b.west,b.south,b.east,b.north].join(",");}
+function ageMin(t){return t?Math.max(0,(Date.now()-new Date(t).getTime())/60000):null;}
+function riskLabel(score){return score>=65?"Very high":score>=40?"High":score>=20?"Elevated":"Normal";}
+function riskColor(score){return score>=65?COLORS.very:score>=40?COLORS.high:score>=20?COLORS.elev:COLORS.normal;}
+function pointInRing(pt,ring){let x=pt[1],y=pt[0],inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1];const hit=((yi>y)!=(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi+1e-12)+xi);if(hit)inside=!inside;}return inside;}
+function pointInGeom(pt,g){if(!g)return false;if(g.type==="Polygon")return g.coordinates.some(r=>pointInRing(pt,r));if(g.type==="MultiPolygon")return g.coordinates.some(p=>p.some(r=>pointInRing(pt,r)));return false;}
+
+const map=L.map("map",{zoomControl:true}).fitBounds([[25.8,-106.7],[36.6,-93.5]]);
+L.tileLayer("https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",{
+  maxZoom:18,maxNativeZoom:16,attribution:"USGS The National Map"
+}).addTo(map);
+const gaugeLayer=L.layerGroup().addTo(map), alertLayer=L.geoJSON(null).addTo(map), sviLayer=L.geoJSON(null).addTo(map);
+L.control.layers(null,{"USGS river gauges":gaugeLayer,"NWS flood alerts":alertLayer,"CDC SVI counties":sviLayer},{collapsed:false}).addTo(map);
+
+let gauges=[],alerts=[],counties=[],timers={},inflight={usgs:false,nws:false,svi:false},cache={};
+const USGS_MS=60*60*1000,NWS_MS=5*60*1000,SVI_MS=24*60*60*1000;
+
+function initArea(){
+  const sel=$("area");AREAS.forEach((a,i)=>{const o=document.createElement("option");o.value=i;o.textContent=a[0];sel.appendChild(o);});
+  sel.addEventListener("change",()=>{const b=area()[2];map.fitBounds([[b[0],b[1]],[b[2],b[3]]]);cache={};loadAll(true);});
+}
+function currentSeriesValue(series){const vals=series?.values?.[0]?.value||[];return vals.length?vals[vals.length-1]:null;}
+function valueNearHoursAgo(series,hours){
+  const vals=series?.values?.[0]?.value||[]; if(!vals.length)return null;
+  const target=Date.now()-hours*3600000;let best=null,dist=Infinity;
+  vals.forEach(v=>{const d=Math.abs(new Date(v.dateTime).getTime()-target);if(d<dist){dist=d;best=v;}});
+  return best;
+}
+function parseUSGS(json){
+  const sites={};const ts=json?.value?.timeSeries||[];
+  ts.forEach(s=>{
+    const si=s.sourceInfo||{},code=si.siteCode?.[0]?.value;if(!code)return;
+    if(!sites[code])sites[code]={id:code,name:si.siteName||code,lat:+si.geoLocation?.geogLocation?.latitude,lon:+si.geoLocation?.geogLocation?.longitude,series:{}};
+    const p=s.variable?.variableCode?.[0]?.value;sites[code].series[p]=s;
+  });
+  return Object.values(sites).filter(x=>isFinite(x.lat)&&isFinite(x.lon));
+}
+function seriesStats(s){
+  if(!s)return {now:null,old:null,delta:null,pct:null,time:null};
+  const n=currentSeriesValue(s),o=valueNearHoursAgo(s,6);
+  const now=n?+n.value:null,old=o?+o.value:null,delta=(now!=null&&old!=null)?now-old:null;
+  const pct=(delta!=null&&old>0)?delta/old*100:null;
+  return {now,old,delta,pct,time:n?.dateTime||null};
+}
+function alertPoints(event){
+  if(event==="Flash Flood Warning")return 65;if(event==="Flood Warning")return 50;
+  if(event==="Flood Watch"||event==="Flash Flood Watch")return 25;if(event==="Flood Advisory")return 20;return 0;
+}
+function contextAt(lat,lon){
+  const pt=[lat,lon];
+  const hits=alerts.filter(a=>pointInGeom(pt,a.geometry));
+  const county=counties.find(c=>pointInGeom(pt,c.geometry));
+  const maxAlert=hits.reduce((m,a)=>Math.max(m,alertPoints(a.properties?.event)),0);
+  const svi=Math.max(0,Math.min(1,+county?.properties?.RPL_THEMES||0));
+  return {hits,county,maxAlert,svi};
+}
+function computeRisk(g){
+  const stage=seriesStats(g.series["00065"]),flow=seriesStats(g.series["00060"]),ctx=contextAt(g.lat,g.lon);
+  const stagePts=stage.delta==null?0:Math.min(20,Math.max(0,stage.delta*10));
+  const flowPts=flow.pct==null?0:Math.min(10,Math.max(0,flow.pct/10));
+  const sviPts=ctx.svi*10;
+  const score=Math.min(100,Math.round(ctx.maxAlert+stagePts+flowPts+sviPts));
+  return {score,stage,flow,ctx,stagePts,flowPts,sviPts};
+}
+function renderGauges(){
+  gaugeLayer.clearLayers();
+  gauges.forEach(g=>{
+    const r=computeRisk(g),c=riskColor(r.score),temp=seriesStats(g.series["00010"]);
+    const county=r.ctx.county?.properties||{};
+    const alertsTxt=r.ctx.hits.length?r.ctx.hits.map(a=>a.properties?.event).filter(Boolean).join(", "):"None intersect gauge point";
+    const age=ageMin(r.stage.time||r.flow.time);
+    const html='<h3>'+esc(g.name)+'</h3><span class="risk-pill" style="background:'+c+'">'+riskLabel(r.score)+' · '+r.score+'/100 derived</span>'+ 
+      '<dl><dt>Gage height</dt><dd>'+(r.stage.now==null?"—":r.stage.now.toFixed(2)+" ft")+'</dd>'+ 
+      '<dt>6 h stage change</dt><dd>'+(r.stage.delta==null?"—":(r.stage.delta>=0?"+":"")+r.stage.delta.toFixed(2)+" ft")+'</dd>'+ 
+      '<dt>Discharge</dt><dd>'+(r.flow.now==null?"—":Math.round(r.flow.now).toLocaleString()+" ft³/s")+'</dd>'+ 
+      '<dt>6 h flow change</dt><dd>'+(r.flow.pct==null?"—":(r.flow.pct>=0?"+":"")+r.flow.pct.toFixed(0)+"%")+'</dd>'+ 
+      '<dt>Water temp</dt><dd>'+(temp.now==null?"—":temp.now.toFixed(1)+" °C")+'</dd>'+ 
+      '<dt>Official alerts</dt><dd>'+esc(alertsTxt)+'</dd>'+ 
+      '<dt>County</dt><dd>'+esc(county.COUNTY||"—")+'</dd>'+ 
+      '<dt>Population</dt><dd>'+((+county.E_TOTPOP||0).toLocaleString()||"—")+'</dd>'+ 
+      '<dt>SVI rank</dt><dd>'+(county.RPL_THEMES==null?"—":(+county.RPL_THEMES).toFixed(2))+'</dd>'+ 
+      '<dt>Obs age</dt><dd>'+(age==null?"—":Math.round(age)+" min")+'</dd></dl>'+ 
+      '<button class="popup-btn" onclick="loadPrecip(\''+esc(g.id)+'\','+g.lat+','+g.lon+')">Load NWS 12 h precipitation</button>'+ 
+      '<div id="precip-'+esc(g.id)+'" class="small"></div>';
+    L.circleMarker([g.lat,g.lon],{radius:6,weight:2,color:"#101315",fillColor:c,fillOpacity:1}).bindPopup(html).addTo(gaugeLayer);
+  });
+  $("gaugeCount").textContent=gauges.length;
+}
+function renderAlerts(){
+  alertLayer.clearLayers();
+  alertLayer=L.geoJSON({type:"FeatureCollection",features:alerts},{
+    style:f=>({color:"#ff5f5f",weight:2,fillColor:"#ff5f5f",fillOpacity:.12,dashArray:f.properties?.event==="Flood Watch"?"5 4":null}),
+    onEachFeature:(f,l)=>l.bindPopup("<h3>"+esc(f.properties?.event||"NWS alert")+"</h3><b>"+esc(f.properties?.headline||"")+"</b><p>"+esc(f.properties?.areaDesc||"")+"</p><div>Effective: "+fmtTime(f.properties?.effective)+"</div><div>Expires: "+fmtTime(f.properties?.expires)+"</div>")
+  }).addTo(map);
+  $("alertCount").textContent=alerts.length;
+}
+function sviStyle(f){
+  const v=Math.max(0,Math.min(1,+f.properties?.RPL_THEMES||0));
+  return {color:"#8d79dd",weight:.7,fillColor:"#8d79dd",fillOpacity:.05+.25*v};
+}
+function renderSVI(){
+  sviLayer.clearLayers();
+  sviLayer=L.geoJSON({type:"FeatureCollection",features:counties},{
+    style:sviStyle,onEachFeature:(f,l)=>{const p=f.properties||{};l.bindPopup("<h3>"+esc(p.COUNTY||"County")+"</h3><dl><dt>State</dt><dd>"+esc(p.ST_ABBR||"")+"</dd><dt>Population</dt><dd>"+((+p.E_TOTPOP||0).toLocaleString())+"</dd><dt>Overall SVI rank</dt><dd>"+((+p.RPL_THEMES||0).toFixed(2))+"</dd></dl><p>2022 CDC/ATSDR SVI context.</p>");}
+  }).addTo(map);
+  $("countyCount").textContent=counties.length;
+}
+async function getJSON(url,opts={}){
+  const r=await fetch(url,opts);if(r.status===429||r.status===503)throw new Error("service throttling ("+r.status+")");
+  if(!r.ok)throw new Error("HTTP "+r.status);return r.json();
+}
+async function loadUSGS(force=false){
+  if(inflight.usgs)return;const key="usgs-"+area()[1],c=cache[key];
+  if(!force&&c&&Date.now()-c.t<USGS_MS){gauges=c.v;renderGauges();return;}
+  inflight.usgs=true;$("usgsStatus").textContent="USGS: loading…";
+  try{
+    const b=areaBBox();
+    const url="https://waterservices.usgs.gov/nwis/iv/?format=json&bBox="+encodeURIComponent(boxString(b))+"&parameterCd=00060,00065,00010&period=P1D&siteStatus=active";
+    gauges=parseUSGS(await getJSON(url));cache[key]={t:Date.now(),v:gauges};renderGauges();
+    const newest=gauges.map(g=>seriesStats(g.series["00065"]).time||seriesStats(g.series["00060"]).time).filter(Boolean).sort().pop();
+    $("usgsStatus").innerHTML="USGS: <b>"+gauges.length+" gauges</b>, newest "+fmtTime(newest);
+  }catch(e){err("USGS: "+e.message);$("usgsStatus").textContent="USGS: unavailable; other layers still work";}finally{inflight.usgs=false;}
+}
+async function loadNWS(force=false){
+  if(inflight.nws)return;const state=area()[1],key="nws-"+state,c=cache[key];
+  if(!force&&c&&Date.now()-c.t<NWS_MS){alerts=c.v;renderAlerts();renderGauges();return;}
+  inflight.nws=true;$("nwsStatus").textContent="NWS: loading…";
+  try{
+    const j=await getJSON("https://api.weather.gov/alerts/active?area="+state,{headers:{"Accept":"application/geo+json"}});
+    const floodEvents=new Set(["Flash Flood Warning","Flood Warning","Flood Watch","Flash Flood Watch","Flood Advisory"]);
+    alerts=(j.features||[]).filter(f=>f.geometry&&floodEvents.has(f.properties?.event));
+    cache[key]={t:Date.now(),v:alerts};renderAlerts();renderGauges();
+    $("nwsStatus").innerHTML="NWS: <b>"+alerts.length+" active flood alerts</b>, checked "+new Date().toLocaleTimeString();
+  }catch(e){err("NWS alerts: "+e.message);$("nwsStatus").textContent="NWS: unavailable; gauge data still works";}finally{inflight.nws=false;}
+}
+async function loadSVI(force=false){
+  if(inflight.svi)return;const key="svi-"+area()[1],c=cache[key];
+  if(!force&&c&&Date.now()-c.t<SVI_MS){counties=c.v;renderSVI();renderGauges();return;}
+  inflight.svi=true;$("sviStatus").textContent="SVI: loading…";
+  try{
+    const b=areaBBox(),geom=boxString(b);
+    const base="https://onemap.cdc.gov/onemapservices/rest/services/SVI/CDC_ATSDR_Social_Vulnerability_Index_2022_USA/FeatureServer/1/query";
+    const q=new URLSearchParams({where:"1=1",outFields:"STCNTY,COUNTY,ST_ABBR,RPL_THEMES,E_TOTPOP",geometry:geom,geometryType:"esriGeometryEnvelope",inSR:"4326",spatialRel:"esriSpatialRelIntersects",outSR:"4326",returnGeometry:"true",f:"geojson"});
+    const j=await getJSON(base+"?"+q.toString());counties=j.features||[];cache[key]={t:Date.now(),v:counties};renderSVI();renderGauges();
+    $("sviStatus").innerHTML="SVI: <b>2022 county vintage</b>, "+counties.length+" counties loaded";
+  }catch(e){err("CDC SVI: "+e.message);$("sviStatus").textContent="SVI: unavailable; score omits vulnerability points";}finally{inflight.svi=false;}
+}
+async function loadPrecip(id,lat,lon){
+  const el=document.getElementById("precip-"+id);if(!el)return;el.textContent="Loading NWS precipitation…";
+  try{
+    const p=await getJSON("https://api.weather.gov/points/"+lat.toFixed(4)+","+lon.toFixed(4),{headers:{"Accept":"application/geo+json"}});
+    const grid=p.properties?.forecastGridData;if(!grid)throw new Error("no forecast grid");
+    const g=await getJSON(grid,{headers:{"Accept":"application/geo+json"}});
+    const vals=g.properties?.quantitativePrecipitation?.values||[],until=Date.now()+12*3600000;
+    let mm=0,used=0;vals.forEach(v=>{const start=Date.parse(String(v.validTime||"").split("/")[0]);if(start>=Date.now()-3600000&&start<=until&&isFinite(+v.value)){mm+=+v.value;used++;}});
+    el.innerHTML=used?("<b>NWS 12 h QPF:</b> "+mm.toFixed(1)+" mm ("+(mm/25.4).toFixed(2)+" in), derived by summing grid values whose intervals begin in the next 12 h."):("NWS QPF: no non-null grid values found for next 12 h.");
+  }catch(e){el.textContent="NWS precipitation unavailable: "+e.message;}
+}
+window.loadPrecip=loadPrecip;
+async function loadAll(force=false){errors.length=0;$("errors").innerHTML="";await Promise.allSettled([loadSVI(force),loadNWS(force),loadUSGS(force)]);renderGauges();}
+function schedule(){
+  clearInterval(timers.usgs);clearInterval(timers.nws);
+  timers.usgs=setInterval(()=>{if(!document.hidden&&navigator.onLine!==false)loadUSGS(true);},USGS_MS);
+  timers.nws=setInterval(()=>{if(!document.hidden&&navigator.onLine!==false)loadNWS(true);},NWS_MS);
+}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&navigator.onLine!==false){loadNWS(false);loadUSGS(false);}});
+window.addEventListener("online",()=>loadAll(false));
+$("refresh").addEventListener("click",()=>loadAll(true));
+initArea();schedule();loadAll(true);
+</script>
+</body>
+</html>
