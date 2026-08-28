@@ -1,6 +1,14 @@
 <!doctype html>
 <html lang="en">
 <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-8SVEH8WD1R"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-8SVEH8WD1R');
+</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wildfire map</title>
@@ -72,6 +80,7 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
 .err{color:var(--critical);font-size:12.5px;margin:6px 0}
 .foot{color:var(--text-muted);font-size:11.5px;line-height:1.55}
 .foot code{font-size:11px;word-break:break-all;color:var(--text-secondary)}
+.copyright{color:var(--text-muted);font-size:11px;margin:16px 0 0;opacity:.72}
 .leaflet-popup-content{font:13px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;margin:10px 12px}
 .leaflet-popup-content h3{margin:0 0 5px;font-size:14px}
 .leaflet-popup-content dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:0}
@@ -131,8 +140,9 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
     GOES detections: NOAA NESDIS Hazard Mapping System, filtered to GOES-East and GOES-West, <code>services2.arcgis.com/.../NOAA_Satellite_Fire_Detections_(v1)</code><br><br>
     Basemaps: six options, all served without an account or key. USGS Imagery Topo, USGS Topo, and USGS Shaded Relief come from The National Map and are US federal public domain. NASA GIBS Blue Marble is NASA EOSDIS, public domain, and caps out at zoom 8. OpenStreetMap and OpenTopoMap are community tile servers under their own usage policies, fine for light personal use, not for heavy traffic. Map library: Leaflet 1.9.4 from cdnjs, open source under BSD-2.<br><br>
     Markers are drawn with plain CSS and SVG shapes. No third-party icon files are used.<br><br>
-    Polling: incidents and GOES every 5 minutes, perimeters and VIIRS every 10, MODIS every 15, and only for layers that are switched on. Nothing is requested while the tab is in the background or the browser is offline, one request per layer at a time, with exponential backoff after a failure. No API keys, tokens, accounts, cookies, local storage, or analytics are used anywhere on this page.
+    Polling: incidents and GOES every 5 minutes, perimeters and VIIRS every 10, MODIS every 15, and only for layers that are switched on. Nothing is requested while the tab is in the background or the browser is offline, one request per layer at a time, with exponential backoff after a failure. No API keys, tokens, accounts, or local storage are required by the map data services. This page uses Google Analytics (GA4) for site analytics.
   </p>
+  <p class="copyright">© 2026 MitchellCo Inc.</p>
 </aside>
 <div id="map"></div>
 </main>
