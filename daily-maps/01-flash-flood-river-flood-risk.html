@@ -1,22 +1,411 @@
-<!doctype html><html lang="en"><head>
+<!doctype html>
+<html lang="en">
+<head>
 <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-8SVEH8WD1R"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-8SVEH8WD1R');</script>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RiverWatch | Flash Flood & River Flood Risk</title><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><style>:root{color-scheme:dark;--b:#101315;--p:#171b1e;--c:#20262a;--l:#394148;--t:#f6f8f9;--m:#9eabb3;--a:#55a7ff;--n:#4db66b;--e:#e6b73f;--h:#e47a3c;--v:#d94a4a}*{box-sizing:border-box}html,body{height:100%;margin:0}body{font:14px/1.4 system-ui;background:var(--b);color:var(--t)}header{display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:9px 13px;background:var(--p);border-bottom:1px solid var(--l)}h1{font-size:16px;margin:0}.sp{flex:1}select,button{font:inherit;color:var(--t);background:var(--c);border:1px solid var(--l);border-radius:6px;padding:5px 7px}main{display:grid;grid-template-columns:minmax(295px,365px) 1fr;height:calc(100% - 51px)}aside{overflow:auto;padding:11px 13px 30px;background:var(--p);border-right:1px solid var(--l)}#map{height:100%;min-height:430px}.dim .leaflet-tile-pane{filter:brightness(.62) saturate(.75)}h2{font-size:11px;text-transform:uppercase;color:var(--m);margin:17px 0 6px}.card{display:block;background:var(--c);border:1px solid var(--l);border-radius:7px;padding:7px;margin:5px 0}.row,.risk{display:flex;gap:7px;align-items:center}.risk{padding:3px;font-size:12px}input{accent-color:var(--a)}.dot{width:12px;height:12px;border-radius:50%;border:2px solid #111}.sw{width:18px;height:10px}.off{opacity:.45}.note,.status,.src{color:var(--m);font-size:12px}.metric{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--l);font-size:12px}.formula{font:11px/1.5 monospace;background:#111719;border:1px solid var(--l);border-radius:7px;padding:7px}.prog{display:none;margin:7px 0;padding:7px;border:1px solid var(--l);border-radius:7px}.prog.on{display:block}.pt{height:6px;background:#293138;border-radius:9px;overflow:hidden}.pb{height:100%;width:0;background:var(--a)}.ph{display:flex;justify-content:space-between;color:var(--m);font-size:11px}.err{color:#ff8b8b;font-size:12px}.src a{color:#9ccaff}.copy{color:#7d878d;font-size:11px}.pill{padding:2px 6px;border-radius:20px;color:#fff;font-weight:700;font-size:11px}.leaflet-popup-content{font:12px/1.4 system-ui;min-width:225px}.leaflet-popup-content dl{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;margin:5px 0}.pop{font-size:11px;padding:4px;margin:4px 2px 0 0}@media(max-width:850px){main{grid-template-columns:1fr;height:auto}#map{height:62vh}}</style></head><body><header><h1>RiverWatch: Flash Flood & River Flood Risk</h1><span class="sp"></span><label>Basemap <select id="base"></select></label><label>Area <select id="area"></select></label><button id="refresh">Refresh</button></header><main><aside>
-<h2>Map layers & risk legend</h2><label class="card" id="cg"><span class="row"><input id="tg" type="checkbox" checked><span class="dot" style="background:#79b8ff"></span><b>USGS river gauges</b></span></label><label class="card" id="ca"><span class="row"><input id="ta" type="checkbox" checked><span class="sw" style="background:#ff5f5f44;border:2px solid #ff5f5f"></span><b>NWS flood alerts</b></span></label><label class="card" id="cs"><span class="row"><input id="ts" type="checkbox" checked><span class="sw" style="background:#8d79dd66;border:1px solid #8d79dd"></span><b>CDC SVI counties</b></span></label><div class="note"><b>Gauge risk filters</b></div><div id="rf"><label class="risk"><input type="checkbox" data-r="n" checked><span class="dot" style="background:var(--n)"></span>Normal &lt;20</label><label class="risk"><input type="checkbox" data-r="e" checked><span class="dot" style="background:var(--e)"></span>Elevated 20–39</label><label class="risk"><input type="checkbox" data-r="h" checked><span class="dot" style="background:var(--h)"></span>High 40–64</label><label class="risk"><input type="checkbox" data-r="v" checked><span class="dot" style="background:var(--v)"></span>Very high 65–100</label></div>
-<h2>Fusion</h2><p class="note">USGS river hazard + NWS alerts + county population/SVI. Gauge risk colors are derived, not official.</p><h2>Derived risk</h2><div class="formula"><b>Score = alert + flow + rise + SVI</b><br>Alert: 20/25/50/65 · Flow: 8/18/25<br>Rise=min(20,max(0,ft/hr×20)) · SVI=10×rank · cap 100</div><p class="note">Non-official. NWS flood thresholds load from gauge popups.</p>
-<h2>Live status</h2><div class="metric"><span>USGS gauges</span><b id="gc">0</b></div><div class="metric"><span>NWS flood alerts</span><b id="ac">0</b></div><div class="metric"><span>CDC counties</span><b id="cc">0</b></div><p class="status" id="us">USGS: not loaded</p><p class="status" id="ns">NWS: not loaded</p><p class="status" id="ss">SVI: not loaded</p><div class="prog" id="prog"><div class="ph"><span id="pl">Progressive load</span><b id="pc">0 / 0</b></div><div class="pt"><div class="pb" id="pb"></div></div></div><div id="errs"></div>
-<h2>Stewardship</h2><p class="note">Regions load USGS+CDC state-by-state, render progressively, cache results, pause between new chunks, cancel stale work, and pause hidden/offline. NWS uses one alert feed. Refresh: state USGS 15m, regions 60m, NWS 5m.</p><h2>Sources</h2><p class="src"><a href="https://dashboard.waterdata.usgs.gov/" target="_blank">USGS</a> · <a href="https://www.weather.gov/documentation/services-web-api" target="_blank">NWS</a> · <a href="https://api.water.noaa.gov/nwps/v1/docs/" target="_blank">NWPS</a> · <a href="https://onemap.cdc.gov/onemapservices/rest/services/SVI/CDC_ATSDR_Social_Vulnerability_Index_2022_USA/FeatureServer/1" target="_blank">CDC SVI</a><br>Basemaps: USGS/OSM/OpenTopoMap/NASA GIBS. FEMA NFHL omitted pending a verified anonymous browser endpoint.</p><div class="copy">© 2026 MitchellCo Inc.</div></aside><div id="map"></div></main>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script>
-const S=`Alabama|AL|30.1|-88.6|35.1|-84.8;Alaska|AK|51|-179.9|71.6|-129.9;Arizona|AZ|31.3|-114.9|37.1|-109;Arkansas|AR|33|-94.7|36.6|-89.6;California|CA|32.5|-124.5|42.1|-114.1;Colorado|CO|36.9|-109.1|41.1|-102;Connecticut|CT|40.9|-73.8|42.1|-71.7;Delaware|DE|38.4|-75.8|39.9|-75;Florida|FL|24.4|-87.7|31.1|-80;Georgia|GA|30.3|-85.7|35.1|-80.8;Hawaii|HI|18.8|-160.3|22.4|-154.7;Idaho|ID|41.9|-117.3|49.1|-111;Illinois|IL|36.9|-91.6|42.6|-87;Indiana|IN|37.7|-88.1|41.8|-84.7;Iowa|IA|40.3|-96.7|43.6|-90.1;Kansas|KS|36.9|-102.1|40.1|-94.6;Kentucky|KY|36.4|-89.6|39.2|-81.9;Louisiana|LA|28.9|-94.1|33.1|-88.8;Maine|ME|43|-71.1|47.5|-66.9;Maryland|MD|37.9|-79.5|39.8|-75;Massachusetts|MA|41.2|-73.6|42.9|-69.8;Michigan|MI|41.7|-90.5|48.3|-82.1;Minnesota|MN|43.5|-97.3|49.4|-89.5;Mississippi|MS|30.1|-91.7|35.1|-88.1;Missouri|MO|35.9|-95.8|40.7|-89.1;Montana|MT|44.3|-116.1|49.1|-104;Nebraska|NE|39.9|-104.1|43.1|-95.3;Nevada|NV|35|-120.1|42.1|-114;New Hampshire|NH|42.7|-72.6|45.4|-70.6;New Jersey|NJ|38.9|-75.7|41.4|-73.9;New Mexico|NM|31.3|-109.1|37.1|-103;New York|NY|40.4|-79.8|45.1|-71.8;North Carolina|NC|33.8|-84.4|36.7|-75.4;North Dakota|ND|45.9|-104.1|49.1|-96.5;Ohio|OH|38.3|-84.9|42.1|-80.5;Oklahoma|OK|33.6|-103.1|37.1|-94.4;Oregon|OR|41.9|-124.6|46.3|-116.4;Pennsylvania|PA|39.7|-80.6|42.3|-74.6;Rhode Island|RI|41.1|-71.9|42.1|-71.1;South Carolina|SC|32|-83.4|35.3|-78.4;South Dakota|SD|42.4|-104.1|46|-96.4;Tennessee|TN|34.9|-90.4|36.7|-81.6;Texas|TX|25.8|-106.7|36.6|-93.5;Utah|UT|36.9|-114.1|42.1|-109;Vermont|VT|42.7|-73.5|45.1|-71.5;Virginia|VA|36.5|-83.7|39.5|-75.2;Washington|WA|45.5|-124.8|49.1|-116.9;West Virginia|WV|37.1|-82.7|40.7|-77.7;Wisconsin|WI|42.4|-92.9|47.1|-86.8;Wyoming|WY|40.9|-111.1|45.1|-104`.split(';').map(x=>{let a=x.split('|');return[a[0],a[1],...a.slice(2).map(Number)]}),D=Object.fromEntries(S.map(x=>[x[1],x])),R=[['Western US',['WA','OR','CA','NV','ID','MT','WY','UT','CO','AZ','NM']],['Central US',['TX','OK','KS','NE','SD','ND','MN','IA','MO','AR','LA','WI','IL','MS']],['Eastern US',['MI','IN','OH','KY','TN','AL','GA','FL','SC','NC','VA','WV','PA','MD','DE','NJ','NY','CT','RI','MA','VT','NH','ME']],['Continental US',S.filter(x=>!['AK','HI'].includes(x[1])).map(x=>x[1])]],$=x=>document.getElementById(x),C={n:'#4db66b',e:'#e6b73f',h:'#e47a3c',v:'#d94a4a'},V={g:1,a:1,s:1},RV={n:1,e:1,h:1,v:1},cache={},county=new Map(),markers=new Map();let G=[],AL=[],CO=[],ctl,gen=0,t={};
-const B=[['USGS Imagery Topo','https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}','USGS The National Map',16,0],['USGS Topo','https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}','USGS The National Map',16,1],['USGS Shaded Relief','https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}','USGS The National Map',15,1],['OpenStreetMap','https://tile.openstreetmap.org/{z}/{x}/{y}.png','© OpenStreetMap contributors',18,1],['OpenTopoMap','https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png','© OpenTopoMap, © OpenStreetMap contributors',16,1],['NASA GIBS Blue Marble','https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg','NASA EOSDIS GIBS',8,0]],M=L.map('map',{preferCanvas:true}).fitBounds([[25.8,-106.7],[36.6,-93.5]]),GL=L.layerGroup().addTo(M),ALY=L.geoJSON(null,{style:{color:'#ff5f5f',weight:2,fillOpacity:.12}}).addTo(M),SL=L.geoJSON(null,{style:f=>({color:'#8d79dd',weight:.6,fillColor:'#8d79dd',fillOpacity:.05+.25*Math.max(0,+f.properties?.RPL_THEMES||0)})}).addTo(M);let BL;
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-8SVEH8WD1R"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-8SVEH8WD1R');
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RiverWatch | Flash Flood & River Flood Risk</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root {color-scheme:dark;--b:#101315;--p:#171b1e;--c:#20262a;--l:#394148;--t:#f6f8f9;--m:#9eabb3;--a:#55a7ff;--n:#4db66b;--e:#e6b73f;--h:#e47a3c;--v:#d94a4a}
+* {box-sizing:border-box}
+html,body {height:100%;margin:0}
+body {font:14px/1.4 system-ui;background:var(--b);color:var(--t)}
+header {display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:9px 13px;background:var(--p);border-bottom:1px solid var(--l)}
+h1 {font-size:16px;margin:0}
+.sp {flex:1}
+select,button {font:inherit;color:var(--t);background:var(--c);border:1px solid var(--l);border-radius:6px;padding:5px 7px}
+main {display:grid;grid-template-columns:minmax(295px,365px) 1fr;height:calc(100% - 51px)}
+aside {overflow:auto;padding:11px 13px 30px;background:var(--p);border-right:1px solid var(--l)}
+#map {height:100%;min-height:430px}
+.dim .leaflet-tile-pane {filter:brightness(.62) saturate(.75)}
+h2 {font-size:11px;text-transform:uppercase;color:var(--m);margin:17px 0 6px}
+.card {display:block;background:var(--c);border:1px solid var(--l);border-radius:7px;padding:7px;margin:5px 0}
+.row,.risk {display:flex;gap:7px;align-items:center}
+.risk {padding:3px;font-size:12px}
+input {accent-color:var(--a)}
+.dot {width:12px;height:12px;border-radius:50%;border:2px solid #111}
+.sw {width:18px;height:10px}
+.off {opacity:.45}
+.note,.status,.src {color:var(--m);font-size:12px}
+.metric {display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--l);font-size:12px}
+.formula {font:11px/1.5 monospace;background:#111719;border:1px solid var(--l);border-radius:7px;padding:7px}
+.prog {display:none;margin:7px 0;padding:7px;border:1px solid var(--l);border-radius:7px}
+.prog.on {display:block}
+.pt {height:6px;background:#293138;border-radius:9px;overflow:hidden}
+.pb {height:100%;width:0;background:var(--a)}
+.ph {display:flex;justify-content:space-between;color:var(--m);font-size:11px}
+.err {color:#ff8b8b;font-size:12px}
+.src a {color:#9ccaff}
+.copy {color:#7d878d;font-size:11px}
+.pill {padding:2px 6px;border-radius:20px;color:#fff;font-weight:700;font-size:11px}
+.leaflet-popup-content {font:12px/1.4 system-ui;min-width:225px}
+.leaflet-popup-content dl {display:grid;grid-template-columns:auto 1fr;gap:2px 8px;margin:5px 0}
+.pop {font-size:11px;padding:4px;margin:4px 2px 0 0}
+@media(max-width:850px) {
+  main {grid-template-columns:1fr;height:auto}
+  #map {height:62vh}
+}
+</style>
+</head>
+<body>
+<header><h1>RiverWatch: Flash Flood & River Flood Risk</h1><span class="sp"></span><label>Basemap <select id="base"></select></label>
+<label>Area <select id="area"></select></label>
+<button id="refresh">Refresh</button></header>
+<main>
+  <aside>
+    <h2>Map layers & risk legend</h2>
+    <label class="card" id="cg"><span class="row"><input id="tg" type="checkbox" checked><span class="dot" style="background:#79b8ff"></span><b>USGS river gauges</b></span></label>
+    <label class="card" id="ca"><span class="row"><input id="ta" type="checkbox" checked><span class="sw" style="background:#ff5f5f44;border:2px solid #ff5f5f"></span><b>NWS flood alerts</b></span></label>
+    <label class="card" id="cs"><span class="row"><input id="ts" type="checkbox" checked><span class="sw" style="background:#8d79dd66;border:1px solid #8d79dd"></span><b>CDC SVI counties</b></span></label>
+    <div class="note"><b>Gauge risk filters</b></div><div id="rf"><label class="risk"><input type="checkbox" data-r="n" checked><span class="dot" style="background:var(--n)"></span>Normal &lt;20</label>
+    <label class="risk"><input type="checkbox" data-r="e" checked><span class="dot" style="background:var(--e)"></span>Elevated 20–39</label>
+    <label class="risk"><input type="checkbox" data-r="h" checked><span class="dot" style="background:var(--h)"></span>High 40–64</label>
+    <label class="risk"><input type="checkbox" data-r="v" checked><span class="dot" style="background:var(--v)"></span>Very high 65–100</label>
+    </div>
+    <h2>Fusion</h2>
+    <p class="note">USGS river hazard + NWS alerts + county population/SVI. Gauge risk colors are derived, not official.</p>
+    <h2>Derived risk</h2>
+    <div class="formula"><b>Score = alert + flow + rise + SVI</b><br>Alert: 20/25/50/65 · Flow: 8/18/25<br>Rise=min(20,max(0,ft/hr×20)) · SVI=10×rank · cap 100</div><p class="note">Non-official. NWS flood thresholds load from gauge popups.</p>
+    <h2>Live status</h2>
+    <div class="metric"><span>USGS gauges</span><b id="gc">0</b></div>
+    <div class="metric"><span>NWS flood alerts</span><b id="ac">0</b></div>
+    <div class="metric"><span>CDC counties</span><b id="cc">0</b></div>
+    <p class="status" id="us">USGS: not loaded</p>
+    <p class="status" id="ns">NWS: not loaded</p>
+    <p class="status" id="ss">SVI: not loaded</p>
+    <div class="prog" id="prog"><div class="ph"><span id="pl">Progressive load</span><b id="pc">0 / 0</b></div><div class="pt"><div class="pb" id="pb"></div></div></div>
+    <div id="errs"></div>
+    <h2>Stewardship</h2>
+    <p class="note">Regions load USGS+CDC state-by-state, render progressively, cache results, pause between new chunks, cancel stale work, and pause hidden/offline. NWS uses one alert feed. Refresh: state USGS 15m, regions 60m, NWS 5m.</p>
+    <h2>Sources</h2>
+    <p class="src"><a href="https://dashboard.waterdata.usgs.gov/" target="_blank">USGS</a> · <a href="https://www.weather.gov/documentation/services-web-api" target="_blank">NWS</a> · <a href="https://api.water.noaa.gov/nwps/v1/docs/" target="_blank">NWPS</a> · <a href="https://onemap.cdc.gov/onemapservices/rest/services/SVI/CDC_ATSDR_Social_Vulnerability_Index_2022_USA/FeatureServer/1" target="_blank">CDC SVI</a><br>Basemaps: USGS/OSM/OpenTopoMap/NASA GIBS. FEMA NFHL omitted pending a verified anonymous browser endpoint.</p>
+    <div class="copy">© 2026 MitchellCo Inc.</div>
+  </aside>
+  <div id="map"></div></main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// State catalog: name | USPS code | south | west | north | east
+const S=`Alabama|AL|30.1|-88.6|35.1|-84.8;Alaska|AK|51|-179.9|71.6|-129.9;Arizona|AZ|31.3|-114.9|37.1|-109;`
+  + `Arkansas|AR|33|-94.7|36.6|-89.6;California|CA|32.5|-124.5|42.1|-114.1;Colorado|CO|36.9|-109.1|41.1|-102;`
+  + `Connecticut|CT|40.9|-73.8|42.1|-71.7;Delaware|DE|38.4|-75.8|39.9|-75;Florida|FL|24.4|-87.7|31.1|-80;`
+  + `Georgia|GA|30.3|-85.7|35.1|-80.8;Hawaii|HI|18.8|-160.3|22.4|-154.7;Idaho|ID|41.9|-117.3|49.1|-111;`
+  + `Illinois|IL|36.9|-91.6|42.6|-87;Indiana|IN|37.7|-88.1|41.8|-84.7;Iowa|IA|40.3|-96.7|43.6|-90.1;`
+  + `Kansas|KS|36.9|-102.1|40.1|-94.6;Kentucky|KY|36.4|-89.6|39.2|-81.9;Louisiana|LA|28.9|-94.1|33.1|-88.8;`
+  + `Maine|ME|43|-71.1|47.5|-66.9;Maryland|MD|37.9|-79.5|39.8|-75;Massachusetts|MA|41.2|-73.6|42.9|-69.8;`
+  + `Michigan|MI|41.7|-90.5|48.3|-82.1;Minnesota|MN|43.5|-97.3|49.4|-89.5;Mississippi|MS|30.1|-91.7|35.1|-88.1;`
+  + `Missouri|MO|35.9|-95.8|40.7|-89.1;Montana|MT|44.3|-116.1|49.1|-104;Nebraska|NE|39.9|-104.1|43.1|-95.3;`
+  + `Nevada|NV|35|-120.1|42.1|-114;New Hampshire|NH|42.7|-72.6|45.4|-70.6;New Jersey|NJ|38.9|-75.7|41.4|-73.9;`
+  + `New Mexico|NM|31.3|-109.1|37.1|-103;New York|NY|40.4|-79.8|45.1|-71.8;North Carolina|NC|33.8|-84.4|36.7|-75.4;`
+  + `North Dakota|ND|45.9|-104.1|49.1|-96.5;Ohio|OH|38.3|-84.9|42.1|-80.5;Oklahoma|OK|33.6|-103.1|37.1|-94.4;`
+  + `Oregon|OR|41.9|-124.6|46.3|-116.4;Pennsylvania|PA|39.7|-80.6|42.3|-74.6;Rhode Island|RI|41.1|-71.9|42.1|-71.1;`
+  + `South Carolina|SC|32|-83.4|35.3|-78.4;South Dakota|SD|42.4|-104.1|46|-96.4;Tennessee|TN|34.9|-90.4|36.7|-81.6;`
+  + `Texas|TX|25.8|-106.7|36.6|-93.5;Utah|UT|36.9|-114.1|42.1|-109;Vermont|VT|42.7|-73.5|45.1|-71.5;`
+  + `Virginia|VA|36.5|-83.7|39.5|-75.2;Washington|WA|45.5|-124.8|49.1|-116.9;West Virginia|WV|37.1|-82.7|40.7|-77.7;`
+  + `Wisconsin|WI|42.4|-92.9|47.1|-86.8;Wyoming|WY|40.9|-111.1|45.1|-104`.split(';').map(x=>{let a=x.split('|');return[a[0],a[1],...a.slice(2).map(Number)]});
+const D=Object.fromEntries(S.map(x=>[x[1],x]));
+const R=[['Western US',['WA','OR','CA','NV','ID','MT','WY','UT','CO','AZ','NM']],['Central US',['TX','OK','KS','NE','SD','ND','MN','IA','MO','AR','LA','WI','IL','MS']],['Eastern US',['MI','IN','OH','KY','TN','AL','GA','FL','SC','NC','VA','WV','PA','MD','DE','NJ','NY','CT','RI','MA','VT','NH','ME']],['Continental US',S.filter(x=>!['AK','HI'].includes(x[1])).map(x=>x[1])]];
+const $=x=>document.getElementById(x);
+const C={
+  n:'#4db66b',e:'#e6b73f',h:'#e47a3c',v:'#d94a4a'
+};
+const RV={
+  n:1,e:1,h:1,v:1
+};
+const cache={};
+const county=new Map();
+const markers=new Map();
+let G=[],AL=[],countyCount=0,ctl,gen=0,t={};
+// Basemaps
+const B=[
+  ['USGS Imagery Topo','https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}','USGS The National Map',16,0],
+  ['USGS Topo','https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}','USGS The National Map',16,1],
+  ['USGS Shaded Relief','https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}','USGS The National Map',15,1],
+  ['OpenStreetMap','https://tile.openstreetmap.org/{z}/{x}/{y}.png','© OpenStreetMap contributors',18,1],
+  ['OpenTopoMap','https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png','© OpenTopoMap, © OpenStreetMap contributors',16,1],
+  ['NASA GIBS Blue Marble','https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg','NASA EOSDIS GIBS',8,0]
+];
+const M=L.map('map',{preferCanvas:true}).fitBounds([[25.8,-106.7],[36.6,-93.5]]);
+const GL=L.layerGroup().addTo(M);
+const ALY=L.geoJSON(null,{style:{color:'#ff5f5f',weight:2,fillOpacity:.12}}).addTo(M);
+const SL=L.geoJSON(null,{style:f=>({color:'#8d79dd',weight:.6,fillColor:'#8d79dd',fillOpacity:.05+.25*Math.max(0,+f.properties?.RPL_THEMES||0)})}).addTo(M);
+let BL;
 const esc=s=>String(s??'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])),err=s=>$('errs').insertAdjacentHTML('beforeend',`<div class="err">${esc(s)}</div>`),sleep=(n,s)=>new Promise((r,j)=>{let q=setTimeout(r,n);s?.addEventListener('abort',()=>{clearTimeout(q);j(new DOMException('Aborted','AbortError'))},{once:true})}),raf=()=>new Promise(r=>requestAnimationFrame(r));
-function area(){let i=+$('area').value;return i<50?{name:S[i][0],states:[S[i][1]]}:{name:R[i-50][0],states:R[i-50][1]}}function box(a=area()){let z=a.states.map(s=>D[s]);return[Math.min(...z.map(x=>x[2])),Math.min(...z.map(x=>x[3])),Math.max(...z.map(x=>x[4])),Math.max(...z.map(x=>x[5]))]}async function ready(s){while((document.hidden||navigator.onLine===false)&&!s.aborted)await sleep(700,s)}
-function pin(p,g){if(!g)return 0;let r=q=>{let x=p[1],y=p[0],v=0;for(let i=0,j=q.length-1;i<q.length;j=i++){let a=q[i],b=q[j];if((a[1]>y)!=(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1]+1e-12)+a[0])v=!v}return v};return g.type==='Polygon'?g.coordinates.some(r):g.type==='MultiPolygon'&&g.coordinates.some(q=>q.some(r))}function gb(g){let w=180,e=-180,s=90,n=-90;!function f(x){if(Array.isArray(x)&&typeof x[0]==='number'){w=Math.min(w,x[0]);e=Math.max(e,x[0]);s=Math.min(s,x[1]);n=Math.max(n,x[1])}else if(Array.isArray(x))x.forEach(f)}(g?.coordinates);return[w,s,e,n]}function intersects(g,b){let x=gb(g);return x[2]>=b[1]&&x[0]<=b[3]&&x[3]>=b[0]&&x[1]<=b[2]}const AP=e=>e==='Flash Flood Warning'?65:e==='Flood Warning'?50:e==='Flood Watch'?25:e==='Flood Advisory'?20:0,SP=s=>s==='P100'?25:s==='P90_100'?18:s==='P75_90'?8:0,RK=x=>x>=65?'v':x>=40?'h':x>=20?'e':'n';
-function context(g){let p=[g.lat,g.lon],c=(county.get(g.st)||[]).find(x=>pin(p,x.geometry)),aa=AL.filter(x=>pin(p,x.geometry)),sv=Math.max(0,Math.min(1,+c?.properties?.RPL_THEMES||0));return{c,aa,sv,a:aa.reduce((q,x)=>Math.max(q,AP(x.properties?.event)),0)}}function risk(g){let s=g.d['00065']||{},f=g.d['00060']||{},x=context(g);return Math.min(100,Math.round(x.a+SP(f.status)+(s.rate==null?0:Math.min(20,Math.max(0,s.rate*20)))+x.sv*10))}function pop(g,x){let s=g.d['00065']||{},f=g.d['00060']||{},q=context(g),c=q.c?.properties||{};return`<h3>${esc(g.name)}</h3><span class="pill" style="background:${C[RK(x)]}">${x}/100 derived</span><dl><dt>Gage height</dt><dd>${s.v==null?'—':s.v.toFixed(2)+' ft'}</dd><dt>Gage rate</dt><dd>${s.rate==null?'—':s.rate.toFixed(2)+' ft/hr'}</dd><dt>Discharge</dt><dd>${f.v==null?'—':Math.round(f.v).toLocaleString()+' ft³/s'}</dd><dt>County</dt><dd>${esc(c.COUNTY||'—')}</dd><dt>SVI</dt><dd>${c.RPL_THEMES==null?'—':(+c.RPL_THEMES).toFixed(2)}</dd><dt>NWS alerts</dt><dd>${q.aa.map(a=>a.properties?.event).join(', ')||'None'}</dd></dl><button class="pop" onclick="stages('${esc(g.id)}')">NWS flood stages</button><button class="pop" onclick="precip('${esc(g.id)}',${g.lat},${g.lon})">12 h precipitation</button><div id="f-${esc(g.id)}" class="note"></div><div id="p-${esc(g.id)}" class="note"></div>`}
-function draw(g){let o=markers.get(g.id);if(o)GL.removeLayer(o);let x=risk(g),k=RK(x);if(!RV[k])return markers.delete(g.id);let m=L.circleMarker([g.lat,g.lon],{radius:6,weight:2,color:'#101315',fillColor:C[k],fillOpacity:1}).bindPopup(pop(g,x)).addTo(GL);markers.set(g.id,m)}async function drawBatch(a,s){for(let i=0;i<a.length;i+=60){if(s.aborted)throw new DOMException('Aborted','AbortError');a.slice(i,i+60).forEach(draw);$('gc').textContent=markers.size===G.length?G.length:`${markers.size} / ${G.length} shown`;await raf()}}async function redraw(){GL.clearLayers();markers.clear();for(let i=0;i<G.length;i+=80){G.slice(i,i+80).forEach(draw);await raf()}$('gc').textContent=markers.size===G.length?G.length:`${markers.size} / ${G.length} shown`}async function addSVI(fs,st,s){county.set(st,fs);CO.push(...fs);for(let i=0;i<fs.length;i+=25){SL.addData({type:'FeatureCollection',features:fs.slice(i,i+25)});$('cc').textContent=CO.length;await raf();if(s.aborted)throw new DOMException('Aborted','AbortError')}}
-async function json(u,o={}){let r=await fetch(u,o);if(!r.ok)throw Error('HTTP '+r.status);return r.json()}function cwis(st){let d=D[st],f=`(AccessLevelCode eq 'P') and (Latitude ge ${d[2]} and Latitude le ${d[4]} and Longitude ge ${d[3]} and Longitude le ${d[5]}) and (SiteTypeCode in ('ST','ST-TS','ST-CA','ST-DCH')) and (ParameterCode in ('00060','00065','00010'))`,q=new URLSearchParams({'$top':'5000','$filter':f,'$select':'SiteNumber,SiteName,Latitude,Longitude,ParameterCode,UpdatedUtc,Value,RateOfChangeUnitPerHour,StatisticStatusCode,FloodStageStatusCode'});return'https://dashboard.waterdata.usgs.gov/service/cwis/1.0/odata/CurrentConditions?'+q}function parse(j,st){let x={};for(let r of j.value||[]){let id=String(r.SiteNumber||'');if(!id)continue;x[id]??={id,name:r.SiteName||'USGS '+id,lat:+r.Latitude,lon:+r.Longitude,st,d:{}};let v=+r.Value,z=+r.RateOfChangeUnitPerHour;x[id].d[r.ParameterCode]={v:isFinite(v)?v:null,rate:isFinite(z)?z:null,status:r.StatisticStatusCode}}return Object.values(x)}async function svi(st,s){if(cache['s'+st])return cache['s'+st];let q=new URLSearchParams({where:`ST_ABBR='${st}'`,outFields:'STCNTY,COUNTY,ST_ABBR,RPL_THEMES,E_TOTPOP',outSR:'4326',returnGeometry:'true',geometryPrecision:'5',maxAllowableOffset:'.003',f:'geojson'}),v=(await json('https://onemap.cdc.gov/onemapservices/rest/services/SVI/CDC_ATSDR_Social_Vulnerability_Index_2022_USA/FeatureServer/1/query?'+q,{signal:s})).features||[];return cache['s'+st]=v}async function usgs(st,s,force){if(!force&&cache['u'+st]&&Date.now()-cache['u'+st].t<9e5)return cache['u'+st].v;let v=parse(await json(cwis(st),{signal:s}),st);cache['u'+st]={t:Date.now(),v};return v}function merge(a){let n=[];for(let g of a){let q=G.find(x=>x.id===g.id);q?Object.assign(q,g):(G.push(g),n.push(g))}return n}function prog(i,n,name){$('prog').classList.toggle('on',n>1);$('pc').textContent=`${i} / ${n} states`;$('pl').textContent=`Progressive load${name?' · '+name:''}`;$('pb').style.width=100*i/n+'%'}
-async function alerts(s,my,a){let u=a.states.length===1?'https://api.weather.gov/alerts/active?area='+a.states[0]:'https://api.weather.gov/alerts/active?status=actual&message_type=alert';try{let j=await json(u,{headers:{Accept:'application/geo+json'},signal:s});if(my!==gen)return;let ev=new Set(['Flash Flood Warning','Flood Warning','Flood Watch','Flood Advisory']),b=box(a);AL=(j.features||[]).filter(f=>f.geometry&&ev.has(f.properties?.event)&&(a.states.length===1||intersects(f.geometry,b)));ALY.addData({type:'FeatureCollection',features:AL});$('ac').textContent=AL.length;$('ns').textContent=`NWS: ${AL.length} active flood alerts · one request`;redraw()}catch(e){if(e.name!=='AbortError')err('NWS: '+e.message)}}async function load(force=0){ctl?.abort();ctl=new AbortController;let s=ctl.signal,my=++gen,a=area(),n=a.states.length;G=[];AL=[];CO=[];county.clear();markers.clear();GL.clearLayers();SL.clearLayers();ALY.clearLayers();$('errs').innerHTML='';$('gc').textContent=$('cc').textContent=$('ac').textContent='0';$('us').textContent='USGS: loading…';$('ss').textContent='SVI: loading…';$('ns').textContent='NWS: loading one alert feed…';prog(0,n,'');alerts(s,my,a);for(let i=0;i<n;i++){if(s.aborted||my!==gen)return;await ready(s);let st=a.states[i],cached=cache['s'+st]&&cache['u'+st];try{let fs=await svi(st,s);await addSVI(fs,st,s);let ng=merge(await usgs(st,s,force));await drawBatch(ng,s);$('ss').textContent=`SVI: ${CO.length} counties · ${i+1}/${n} states`;$('us').textContent=`USGS: ${G.length} gauges · ${i+1}/${n} states`;prog(i+1,n,D[st][0])}catch(e){if(e.name==='AbortError')return;err(D[st][0]+': '+e.message)}if(i<n-1)await sleep(cached?50:850,s)}prog(n,n,'complete')}
-function layers(){[['tg','g',GL,'cg'],['ta','a',ALY,'ca'],['ts','s',SL,'cs']].forEach(([id,k,l,c])=>$(id).onchange=e=>{V[k]=e.target.checked;$(c).classList.toggle('off',!V[k]);V[k]?(M.hasLayer(l)||l.addTo(M)):(M.hasLayer(l)&&M.removeLayer(l))});document.querySelectorAll('[data-r]').forEach(x=>x.onchange=e=>{RV[e.target.dataset.r]=e.target.checked;e.target.parentElement.classList.toggle('off',!e.target.checked);redraw()})}function schedule(){clearInterval(t.u);clearInterval(t.n);t.u=setInterval(()=>{if(!document.hidden&&navigator.onLine!==false)load(1)},area().states.length>1?36e5:9e5);t.n=setInterval(()=>alertsOnly(),3e5)}async function alertsOnly(){if(document.hidden||navigator.onLine===false)return;let a=area(),s=new AbortController().signal;ALY.clearLayers();await alerts(s,gen,a)}
-window.stages=async id=>{let e=$('f-'+id);e.textContent='Loading…';try{let j=await json('https://api.water.noaa.gov/nwps/v1/gauges/'+encodeURIComponent(id)),c=j.flood?.categories||{},u=j.flood?.stageUnits||'ft',f=x=>x&&isFinite(+x.stage)?(+x.stage)+' '+u:'—';e.innerHTML=`<b>Official NWS stages</b><br>Action ${f(c.action)} · Minor ${f(c.minor)} · Moderate ${f(c.moderate)} · Major ${f(c.major)}`}catch(x){e.textContent='Unavailable: '+x.message}};window.precip=async(id,lat,lon)=>{let e=$('p-'+id);e.textContent='Loading…';try{let p=await json(`https://api.weather.gov/points/${lat.toFixed(4)},${lon.toFixed(4)}`),g=await json(p.properties.forecastGridData),v=g.properties?.quantitativePrecipitation?.values||[],end=Date.now()+432e5,mm=0;for(let x of v){let z=Date.parse(x.validTime.split('/')[0]);if(z>=Date.now()-36e5&&z<=end&&isFinite(+x.value))mm+=+x.value}e.innerHTML=`<b>NWS 12 h QPF:</b> ${mm.toFixed(1)} mm (${(mm/25.4).toFixed(2)} in)`}catch(x){e.textContent='Unavailable: '+x.message}};
-function init(){S.forEach((x,i)=>$('area').add(new Option(x[0],i)));R.forEach((x,i)=>$('area').add(new Option(x[0],50+i)));$('area').value=S.findIndex(x=>x[1]==='TX');$('area').onchange=()=>{let b=box();M.fitBounds([[b[0],b[1]],[b[2],b[3]]]);schedule();load()};B.forEach((x,i)=>$('base').add(new Option(x[0],i)));$('base').onchange=()=>{BL&&M.removeLayer(BL);let x=B[+$('base').value];BL=L.tileLayer(x[1],{maxZoom:18,maxNativeZoom:x[3],attribution:x[2]}).addTo(M);document.body.classList.toggle('dim',!!x[4])};$('base').onchange();layers();$('refresh').onclick=()=>load(1);schedule();load()}window.addEventListener('online',()=>load());document.addEventListener('visibilitychange',()=>{if(!document.hidden&&navigator.onLine!==false&&area().states.length===1)load()});init();
-</script></body></html>
+function area(){
+  let i=+$('area').value;
+  return i<50?{
+    name:S[i][0],states:[S[i][1]]
+  }
+  :{
+    name:R[i-50][0],states:R[i-50][1]
+  }
+}
+function box(a=area()){
+  let z=a.states.map(s=>D[s]);
+  return[Math.min(...z.map(x=>x[2])),Math.min(...z.map(x=>x[3])),Math.max(...z.map(x=>x[4])),Math.max(...z.map(x=>x[5]))]
+}
+async function ready(s){
+  while((document.hidden||navigator.onLine===false)&&!s.aborted)await sleep(700,s)
+}
+function pin(p,g){
+  if(!g)return 0;
+  let r=q=>{
+    let x=p[1],y=p[0],v=0;
+    for(let i=0,j=q.length-1;i<q.length;j=i++){
+      let a=q[i],b=q[j];
+      if((a[1]>y)!=(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1]+1e-12)+a[0])v=!v
+    }
+    return v
+  };
+  return g.type==='Polygon'?g.coordinates.some(r):g.type==='MultiPolygon'&&g.coordinates.some(q=>q.some(r))
+}
+function gb(g){
+  let w=180,e=-180,s=90,n=-90;
+  !function f(x){
+    if(Array.isArray(x)&&typeof x[0]==='number'){
+      w=Math.min(w,x[0]);
+      e=Math.max(e,x[0]);
+      s=Math.min(s,x[1]);
+      n=Math.max(n,x[1])
+    }else if(Array.isArray(x))x.forEach(f)
+  }
+  (g?.coordinates);
+  return[w,s,e,n]
+}
+function intersects(g,b){
+  let x=gb(g);
+  return x[2]>=b[1]&&x[0]<=b[3]&&x[3]>=b[0]&&x[1]<=b[2]
+}
+const AP=e=>e==='Flash Flood Warning'?65:e==='Flood Warning'?50:e==='Flood Watch'?25:e==='Flood Advisory'?20:0,SP=s=>s==='P100'?25:s==='P90_100'?18:s==='P75_90'?8:0,RK=x=>x>=65?'v':x>=40?'h':x>=20?'e':'n';
+function context(g){
+  let p=[g.lat,g.lon],c=(county.get(g.st)||[]).find(x=>pin(p,x.geometry)),aa=AL.filter(x=>pin(p,x.geometry)),sv=Math.max(0,Math.min(1,+c?.properties?.RPL_THEMES||0));
+  return{
+    c,aa,sv,a:aa.reduce((q,x)=>Math.max(q,AP(x.properties?.event)),0)
+  }
+}
+function risk(g){
+  let s=g.d['00065']||{},f=g.d['00060']||{},x=context(g);
+  return Math.min(100,Math.round(x.a+SP(f.status)+(s.rate==null?0:Math.min(20,Math.max(0,s.rate*20)))+x.sv*10))
+}
+function pop(g,x){
+  let s=g.d['00065']||{},f=g.d['00060']||{},q=context(g),c=q.c?.properties||{};
+  return`<h3>${esc(g.name)}</h3><span class="pill" style="background:${C[RK(x)]}">${x}/100 derived</span><dl><dt>Gage height</dt><dd>${s.v==null?'—':s.v.toFixed(2)+' ft'}</dd><dt>Gage rate</dt><dd>${s.rate==null?'—':s.rate.toFixed(2)+' ft/hr'}</dd><dt>Discharge</dt><dd>${f.v==null?'—':Math.round(f.v).toLocaleString()+' ft³/s'}</dd><dt>County</dt><dd>${esc(c.COUNTY||'—')}</dd><dt>SVI</dt><dd>${c.RPL_THEMES==null?'—':(+c.RPL_THEMES).toFixed(2)}</dd><dt>NWS alerts</dt><dd>${q.aa.map(a=>a.properties?.event).join(', ')||'None'}</dd></dl><button class="pop" onclick="stages('${esc(g.id)}')">NWS flood stages</button><button class="pop" onclick="precip('${esc(g.id)}',${g.lat},${g.lon})">12 h precipitation</button><div id="f-${esc(g.id)}" class="note"></div><div id="p-${esc(g.id)}" class="note"></div>`
+}
+function draw(g){
+  let o=markers.get(g.id);
+  if(o)GL.removeLayer(o);
+  let x=risk(g),k=RK(x);
+  if(!RV[k])return markers.delete(g.id);
+  let m=L.circleMarker([g.lat,g.lon],{radius:6,weight:2,color:'#101315',fillColor:C[k],fillOpacity:1}).bindPopup(pop(g,x)).addTo(GL);
+  markers.set(g.id,m)
+}
+async function drawBatch(a,s){
+  for(let i=0;i<a.length;i+=60){
+    if(s.aborted)throw new DOMException('Aborted','AbortError');
+    a.slice(i,i+60).forEach(draw);
+    $('gc').textContent=markers.size===G.length?G.length:`${markers.size} / ${G.length} shown`;
+    await raf()
+  }
+}
+async function redraw(){
+  GL.clearLayers();
+  markers.clear();
+  for(let i=0;i<G.length;i+=80){
+    G.slice(i,i+80).forEach(draw);
+    await raf()
+  }
+  $('gc').textContent=markers.size===G.length?G.length:`${markers.size} / ${G.length} shown`
+}
+async function addSVI(fs,st,s){
+  county.set(st,fs);
+  countyCount+=fs.length;
+  for(let i=0;i<fs.length;i+=25){
+    SL.addData({type:'FeatureCollection',features:fs.slice(i,i+25)});
+    $('cc').textContent=countyCount;
+    await raf();
+    if(s.aborted)throw new DOMException('Aborted','AbortError')
+  }
+}
+async function json(u,o={}){
+  let r=await fetch(u,o);
+  if(!r.ok)throw Error('HTTP '+r.status);
+  return r.json()
+}
+function cwis(st){
+  let d=D[st],f=`(AccessLevelCode eq 'P') and (Latitude ge ${d[2]} and Latitude le ${d[4]} and Longitude ge ${d[3]} and Longitude le ${d[5]}) and (SiteTypeCode in ('ST','ST-TS','ST-CA','ST-DCH')) and (ParameterCode in ('00060','00065','00010'))`,q=new URLSearchParams({'$top':'5000','$filter':f,'$select':'SiteNumber,SiteName,Latitude,Longitude,ParameterCode,UpdatedUtc,Value,RateOfChangeUnitPerHour,StatisticStatusCode,FloodStageStatusCode'});
+  return'https://dashboard.waterdata.usgs.gov/service/cwis/1.0/odata/CurrentConditions?'+q
+}
+function parse(j,st){
+  let x={};
+  for(let r of j.value||[]){
+    let id=String(r.SiteNumber||'');
+    if(!id)continue;
+    x[id]??={
+      id,name:r.SiteName||'USGS '+id,lat:+r.Latitude,lon:+r.Longitude,st,d:{}
+    };
+    let v=+r.Value,z=+r.RateOfChangeUnitPerHour;
+    x[id].d[r.ParameterCode]={
+      v:isFinite(v)?v:null,rate:isFinite(z)?z:null,status:r.StatisticStatusCode
+    }
+  }
+  return Object.values(x)
+}
+async function svi(st,s){
+  if(cache['s'+st])return cache['s'+st];
+  let q=new URLSearchParams({where:`ST_ABBR='${st}'`,outFields:'STCNTY,COUNTY,ST_ABBR,RPL_THEMES,E_TOTPOP',outSR:'4326',returnGeometry:'true',geometryPrecision:'5',maxAllowableOffset:'.003',f:'geojson'}),v=(await json('https://onemap.cdc.gov/onemapservices/rest/services/SVI/CDC_ATSDR_Social_Vulnerability_Index_2022_USA/FeatureServer/1/query?'+q,{signal:s})).features||[];
+  return cache['s'+st]=v
+}
+async function usgs(st,s,force,ttl){
+  if(!force&&cache['u'+st]&&Date.now()-cache['u'+st].t<ttl)return cache['u'+st].v;
+  let v=parse(await json(cwis(st),{signal:s}),st);
+  cache['u'+st]={
+    t:Date.now(),v
+  };
+  return v
+}
+function merge(a){
+  let n=[];
+  for(let g of a){
+    let q=G.find(x=>x.id===g.id);
+    q?Object.assign(q,g):(G.push(g),n.push(g))
+  }
+  return n
+}
+function prog(i,n,name){
+  $('prog').classList.toggle('on',n>1);
+  $('pc').textContent=`${i} / ${n} states`;
+  $('pl').textContent=`Progressive load${name?' · '+name:''}`;
+  $('pb').style.width=100*i/n+'%'
+}
+async function alerts(s,my,a){
+  let u=a.states.length===1?'https://api.weather.gov/alerts/active?area='+a.states[0]:'https://api.weather.gov/alerts/active?status=actual&message_type=alert';
+  try{
+    let j=await json(u,{headers:{Accept:'application/geo+json'},signal:s});
+    if(my!==gen)return;
+    let ev=new Set(['Flash Flood Warning','Flood Warning','Flood Watch','Flood Advisory']),b=box(a);
+    AL=(j.features||[]).filter(f=>f.geometry&&ev.has(f.properties?.event)&&(a.states.length===1||intersects(f.geometry,b)));
+    ALY.addData({type:'FeatureCollection',features:AL});
+    $('ac').textContent=AL.length;
+    $('ns').textContent=`NWS: ${AL.length} active flood alerts · one request`;
+    redraw()
+  }catch(e){
+    if(e.name!=='AbortError')err('NWS: '+e.message)
+  }
+}
+// Progressive state-by-state loader for regional views
+async function load(force=0){
+  ctl?.abort();
+  ctl=new AbortController;
+  let s=ctl.signal,my=++gen,a=area(),n=a.states.length,ttl=n>1?36e5:9e5;
+  G=[];
+  AL=[];
+  countyCount=0;
+  county.clear();
+  markers.clear();
+  GL.clearLayers();
+  SL.clearLayers();
+  ALY.clearLayers();
+  $('errs').innerHTML='';
+  $('gc').textContent=$('cc').textContent=$('ac').textContent='0';
+  $('us').textContent='USGS: loading…';
+  $('ss').textContent='SVI: loading…';
+  $('ns').textContent='NWS: loading one alert feed…';
+  prog(0,n,'');
+  alerts(s,my,a);
+  for(let i=0;i<n;i++){
+    if(s.aborted||my!==gen)return;
+    await ready(s);
+    let st=a.states[i],uc=cache['u'+st],cached=cache['s'+st]&&!force&&uc&&Date.now()-uc.t<ttl;
+    try{
+      let fs=await svi(st,s);
+      await addSVI(fs,st,s);
+      let ng=merge(await usgs(st,s,force,ttl));
+      await drawBatch(ng,s);
+      $('ss').textContent=`SVI: ${countyCount} counties · ${i+1}/${n} states`;
+      $('us').textContent=`USGS: ${G.length} gauges · ${i+1}/${n} states`;
+      prog(i+1,n,D[st][0])
+    }catch(e){
+      if(e.name==='AbortError')return;
+      err(D[st][0]+': '+e.message)
+    }
+    if(i<n-1)await sleep(cached?50:850,s)
+  }
+  prog(n,n,'complete')
+}
+function layers(){
+  [['tg',GL,'cg'],['ta',ALY,'ca'],['ts',SL,'cs']].forEach(([id,l,c])=>$(id).onchange=e=>{let on=e.target.checked;$(c).classList.toggle('off',!on);on?(M.hasLayer(l)||l.addTo(M)):(M.hasLayer(l)&&M.removeLayer(l))});
+  document.querySelectorAll('[data-r]').forEach(x=>x.onchange=e=>{RV[e.target.dataset.r]=e.target.checked;e.target.parentElement.classList.toggle('off',!e.target.checked);redraw()})
+}
+function schedule(){
+  clearInterval(t.u);
+  clearInterval(t.n);
+  t.u=setInterval(()=>{if(!document.hidden&&navigator.onLine!==false)load(1)},area().states.length>1?36e5:9e5);
+  t.n=setInterval(()=>alertsOnly(),3e5)
+}
+async function alertsOnly(){
+  if(document.hidden||navigator.onLine===false)return;
+  let a=area(),s=new AbortController().signal;
+  ALY.clearLayers();
+  await alerts(s,gen,a)
+}
+// On-demand popup data
+window.stages=async id=>{
+  let e=$('f-'+id);
+  e.textContent='Loading…';
+  try{
+    let j=await json('https://api.water.noaa.gov/nwps/v1/gauges/'+encodeURIComponent(id)),c=j.flood?.categories||{},u=j.flood?.stageUnits||'ft',f=x=>x&&isFinite(+x.stage)?(+x.stage)+' '+u:'—';
+    e.innerHTML=`<b>Official NWS stages</b><br>Action ${f(c.action)} · Minor ${f(c.minor)} · Moderate ${f(c.moderate)} · Major ${f(c.major)}`
+  }catch(x){
+    e.textContent='Unavailable: '+x.message
+  }
+};
+window.precip=async(id,lat,lon)=>{
+  let e=$('p-'+id);
+  e.textContent='Loading…';
+  try{
+    let p=await json(`https://api.weather.gov/points/${lat.toFixed(4)},${lon.toFixed(4)}`),g=await json(p.properties.forecastGridData),v=g.properties?.quantitativePrecipitation?.values||[],end=Date.now()+432e5,mm=0;
+    for(let x of v){
+      let z=Date.parse(x.validTime.split('/')[0]);
+      if(z>=Date.now()-36e5&&z<=end&&isFinite(+x.value))mm+=+x.value
+    }
+    e.innerHTML=`<b>NWS 12 h QPF:</b> ${mm.toFixed(1)} mm (${(mm/25.4).toFixed(2)} in)`
+  }catch(x){
+    e.textContent='Unavailable: '+x.message
+  }
+};
+function init(){
+  S.forEach((x,i)=>$('area').add(new Option(x[0],i)));
+  R.forEach((x,i)=>$('area').add(new Option(x[0],50+i)));
+  $('area').value=S.findIndex(x=>x[1]==='TX');
+  $('area').onchange=()=>{
+    let b=box();
+    M.fitBounds([[b[0],b[1]],[b[2],b[3]]]);
+    schedule();
+    load()
+  };
+  B.forEach((x,i)=>$('base').add(new Option(x[0],i)));
+  $('base').onchange=()=>{
+    BL&&M.removeLayer(BL);
+    let x=B[+$('base').value];
+    BL=L.tileLayer(x[1],{maxZoom:18,maxNativeZoom:x[3],attribution:x[2]}).addTo(M);
+    document.body.classList.toggle('dim',!!x[4])
+  };
+  $('base').onchange();
+  layers();
+  $('refresh').onclick=()=>load(1);
+  schedule();
+  load()
+}
+window.addEventListener('online',()=>load());
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&navigator.onLine!==false&&area().states.length===1)load()});
+init();
+</script>
+</body>
+</html>
