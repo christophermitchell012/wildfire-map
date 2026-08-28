@@ -102,10 +102,11 @@ services.
 
 ## Privacy
 
-No API keys, tokens, accounts, cookies, localStorage, sessionStorage, geolocation, or analytics.
-Nothing is sent anywhere except the tile and feature queries listed above. The only third-party
-script is Leaflet 1.9.4 from cdnjs, BSD-2 licensed; vendor it locally if you would rather not depend
-on a CDN.
+The wildfire data and basemap services require no API keys, tokens, accounts, localStorage,
+sessionStorage, or geolocation. The page includes Google Analytics 4 using Measurement ID
+`G-8SVEH8WD1R` to collect standard site-usage analytics. Leaflet 1.9.4 is loaded from cdnjs under the
+BSD-2 license. If you fork the project, remove or replace the Google Analytics tag with your own
+measurement ID rather than sending your traffic to the MitchellCo property.
 
 ## Limitations
 
