@@ -27,6 +27,7 @@ button{cursor:pointer}button:hover,select:hover{border-color:#66747d}
 main{display:grid;grid-template-columns:minmax(315px,385px) 1fr;height:calc(100% - 55px)}
 aside{overflow:auto;background:var(--panel);border-right:1px solid var(--line);padding:13px 15px 36px}
 #map{height:100%;min-height:440px;background:#222}
+.dim .leaflet-tile-pane{filter:brightness(.62) saturate(.75) contrast(1.05)}
 @media(max-width:880px){main{grid-template-columns:1fr;height:auto}aside{border-right:0}#map{height:62vh}}
 h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:20px 0 7px}
 h2:first-child{margin-top:0}.note,.small{color:var(--muted);font-size:12px}.note{margin:7px 0}
@@ -34,7 +35,12 @@ h2:first-child{margin-top:0}.note,.small{color:var(--muted);font-size:12px}.note
 .sw{width:18px;height:10px;border-radius:2px}.status{font-size:12px;color:var(--muted);margin:4px 0}
 .status b{color:var(--text)}.error{color:#ff8b8b;font-size:12px;margin:5px 0}
 .metric{display:grid;grid-template-columns:1fr auto;gap:7px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px}
-.metric b{font-variant-numeric:tabular-nums}.formula{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#cbd5db;background:#111719;border:1px solid var(--line);border-radius:7px;padding:8px}
+.metric b{font-variant-numeric:tabular-nums}
+.formula{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#cbd5db;background:#111719;border:1px solid var(--line);border-radius:8px;padding:10px}
+.formula-main{font-size:12.5px;color:var(--text);font-weight:700;margin-bottom:8px;line-height:1.55}
+.formula-row{display:grid;grid-template-columns:105px 1fr;gap:10px;padding:5px 0;border-top:1px solid #273036}
+.formula-row:first-of-type{border-top:0}.formula-key{color:#91a8b5;font-weight:700}.formula code{color:#dfe9ee;font:inherit}
+@media(max-width:430px){.formula-row{grid-template-columns:1fr;gap:2px}}
 .sources{font-size:11.5px;color:var(--muted);line-height:1.55}.sources a{color:#9ccaff}.copyright{color:#7d878d;font-size:11px;margin-top:16px}
 .leaflet-popup-content{font:12.5px/1.45 ui-sans-serif,-apple-system,"Segoe UI",sans-serif;margin:10px 12px;min-width:240px}
 .leaflet-popup-content h3{font-size:14px;margin:0 0 5px}.leaflet-popup-content dl{display:grid;grid-template-columns:auto 1fr;gap:3px 9px;margin:0}
@@ -46,29 +52,34 @@ h2:first-child{margin-top:0}.note,.small{color:var(--muted);font-size:12px}.note
 <body>
 <header>
   <h1>RiverWatch: Flash Flood & River Flood Risk</h1><span class="spacer"></span>
-  <label>Area <select id="area"></select></label>
+  <label>Basemap <select id="basemap"></select></label>
+  <label>State <select id="area"></select></label>
   <button id="refresh">Refresh live layers</button>
 </header>
 <main>
 <aside>
+  <h2>Map layers &amp; risk legend</h2>
+  <div class="legend">
+    <div><span class="dot" style="background:var(--normal)"></span> USGS gauge: Normal derived risk &lt; 20</div>
+    <div><span class="dot" style="background:var(--elev)"></span> USGS gauge: Elevated 20–39</div>
+    <div><span class="dot" style="background:var(--high)"></span> USGS gauge: High 40–64</div>
+    <div><span class="dot" style="background:var(--very)"></span> USGS gauge: Very high 65–100</div>
+    <div><span class="sw" style="background:rgba(141,121,221,.45);border:1px solid #8d79dd"></span> CDC county SVI context</div>
+    <div><span class="sw" style="background:rgba(255,95,95,.2);border:2px solid #ff5f5f"></span> Official NWS flood alert polygon</div>
+  </div>
+
   <h2>What this map combines</h2>
   <p class="note"><b>Hazard:</b> USGS river measurements and official NWS flood alerts. <b>Exposure:</b> county population. <b>Vulnerability:</b> CDC/ATSDR Social Vulnerability Index (SVI). Gauge colors use a transparent, non-official derived score to prioritize attention.</p>
 
   <h2>Derived gauge risk</h2>
-  <div class="legend">
-    <div><span class="dot" style="background:var(--normal)"></span> Normal &lt; 20</div>
-    <div><span class="dot" style="background:var(--elev)"></span> Elevated 20–39</div>
-    <div><span class="dot" style="background:var(--high)"></span> High 40–64</div>
-    <div><span class="dot" style="background:var(--very)"></span> Very high 65–100</div>
-    <div><span class="sw" style="background:rgba(141,121,221,.45);border:1px solid #8d79dd"></span> CDC county SVI context</div>
-    <div><span class="sw" style="background:rgba(255,95,95,.2);border:2px solid #ff5f5f"></span> Official NWS flood alert polygon</div>
+  <div class="formula">
+    <div class="formula-main">Score = Alert points + USGS flow-status points + Gage-rise points + SVI points</div>
+    <div class="formula-row"><span class="formula-key">Alert</span><span>Flood Advisory = 20<br>Flood Watch = 25<br>Flood Warning = 50<br>Flash Flood Warning = 65</span></div>
+    <div class="formula-row"><span class="formula-key">USGS flow</span><span>Above normal = 8<br>Much above normal = 18<br>All-time high for this day = 25</span></div>
+    <div class="formula-row"><span class="formula-key">Gage rise</span><span><code>min(20, max(0, gage_rate_ft_per_hr × 20))</code></span></div>
+    <div class="formula-row"><span class="formula-key">SVI</span><span><code>10 × county overall SVI percentile rank</code></span></div>
+    <div class="formula-row"><span class="formula-key">Final</span><span>Sum the components and cap the score at <b>100</b>.</span></div>
   </div>
-  <div class="formula">score = alert points + USGS flow-status points + gage-rise points + SVI points
-alert: Flood Advisory 20, Flood Watch 25, Flood Warning 50, Flash Flood Warning 65
-USGS flow status: Above normal 8, Much above normal 18, All-time high 25
-gage rise: min(20, max(0, gage_rate_ft_per_hr × 20))
-SVI: 10 × county overall SVI percentile rank
-final score capped at 100</div>
   <p class="small">This is not an NWS or USGS flood forecast. It does not use official flood-stage thresholds, which vary by gauge. Always follow official warnings and local emergency management.</p>
 
   <h2>Live status</h2>
@@ -95,7 +106,7 @@ final score capped at 100</div>
     <b>CDC/ATSDR Social Vulnerability Index 2022</b><br>
     <a href="https://onemap.cdc.gov/onemapservices/rest/services/SVI/CDC_ATSDR_Social_Vulnerability_Index_2022_USA/FeatureServer/1" target="_blank" rel="noopener">CDC OneMap county FeatureServer</a><br>
     Overall county SVI rank (RPL_THEMES) and estimated total population (E_TOTPOP), queried as GeoJSON for the current map area.<br><br>
-    <b>Basemap:</b> USGS The National Map Topo, U.S. federal public-domain source.<br><br>
+    <b>Basemaps:</b> six keyless choices matching the wildfire map. USGS Imagery Topo, USGS Topo, and USGS Shaded Relief are from The National Map. NASA GIBS Blue Marble is from NASA EOSDIS and caps at zoom 8. OpenStreetMap and OpenTopoMap are community tile services under their own attribution and usage policies.<br><br>
     <b>Preferred layer omitted:</b> FEMA National Flood Hazard Layer is not shown in this build because an anonymous browser/CORS path was not verified strongly enough during this run. No floodplain geometry is fabricated or substituted.
   </div>
   <div class="copyright">© 2026 MitchellCo Inc. Original interface, integration logic, and derived-score presentation only. Source datasets retain their own attribution/status.</div>
@@ -106,12 +117,56 @@ final score capped at 100</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 const AREAS = [
-  ["Texas","TX",[25.8,-106.7,36.6,-93.5]],["California","CA",[32.5,-124.5,42.1,-114.1]],
-  ["Oregon","OR",[41.9,-124.6,46.3,-116.4]],["Washington","WA",[45.5,-124.8,49.1,-116.9]],
-  ["Arizona","AZ",[31.3,-114.9,37.0,-109.0]],["New Mexico","NM",[31.3,-109.1,37.0,-103.0]],
-  ["Colorado","CO",[36.9,-109.1,41.1,-102.0]],["Utah","UT",[36.9,-114.1,42.0,-109.0]],
-  ["Nevada","NV",[35.0,-120.0,42.0,-114.0]],["Idaho","ID",[41.9,-117.3,49.0,-111.0]],
-  ["Montana","MT",[44.3,-116.1,49.1,-104.0]],["Wyoming","WY",[40.9,-111.1,45.0,-104.0]]
+  ["Alabama","AL",[30.1,-88.6,35.1,-84.8]],
+  ["Alaska","AK",[51.0,-179.9,71.6,-129.9]],
+  ["Arizona","AZ",[31.3,-114.9,37.1,-109.0]],
+  ["Arkansas","AR",[33.0,-94.7,36.6,-89.6]],
+  ["California","CA",[32.5,-124.5,42.1,-114.1]],
+  ["Colorado","CO",[36.9,-109.1,41.1,-102.0]],
+  ["Connecticut","CT",[40.9,-73.8,42.1,-71.7]],
+  ["Delaware","DE",[38.4,-75.8,39.9,-75.0]],
+  ["Florida","FL",[24.4,-87.7,31.1,-80.0]],
+  ["Georgia","GA",[30.3,-85.7,35.1,-80.8]],
+  ["Hawaii","HI",[18.8,-160.3,22.4,-154.7]],
+  ["Idaho","ID",[41.9,-117.3,49.1,-111.0]],
+  ["Illinois","IL",[36.9,-91.6,42.6,-87.0]],
+  ["Indiana","IN",[37.7,-88.1,41.8,-84.7]],
+  ["Iowa","IA",[40.3,-96.7,43.6,-90.1]],
+  ["Kansas","KS",[36.9,-102.1,40.1,-94.6]],
+  ["Kentucky","KY",[36.4,-89.6,39.2,-81.9]],
+  ["Louisiana","LA",[28.9,-94.1,33.1,-88.8]],
+  ["Maine","ME",[43.0,-71.1,47.5,-66.9]],
+  ["Maryland","MD",[37.9,-79.5,39.8,-75.0]],
+  ["Massachusetts","MA",[41.2,-73.6,42.9,-69.8]],
+  ["Michigan","MI",[41.7,-90.5,48.3,-82.1]],
+  ["Minnesota","MN",[43.5,-97.3,49.4,-89.5]],
+  ["Mississippi","MS",[30.1,-91.7,35.1,-88.1]],
+  ["Missouri","MO",[35.9,-95.8,40.7,-89.1]],
+  ["Montana","MT",[44.3,-116.1,49.1,-104.0]],
+  ["Nebraska","NE",[39.9,-104.1,43.1,-95.3]],
+  ["Nevada","NV",[35.0,-120.1,42.1,-114.0]],
+  ["New Hampshire","NH",[42.7,-72.6,45.4,-70.6]],
+  ["New Jersey","NJ",[38.9,-75.7,41.4,-73.9]],
+  ["New Mexico","NM",[31.3,-109.1,37.1,-103.0]],
+  ["New York","NY",[40.4,-79.8,45.1,-71.8]],
+  ["North Carolina","NC",[33.8,-84.4,36.7,-75.4]],
+  ["North Dakota","ND",[45.9,-104.1,49.1,-96.5]],
+  ["Ohio","OH",[38.3,-84.9,42.1,-80.5]],
+  ["Oklahoma","OK",[33.6,-103.1,37.1,-94.4]],
+  ["Oregon","OR",[41.9,-124.6,46.3,-116.4]],
+  ["Pennsylvania","PA",[39.7,-80.6,42.3,-74.6]],
+  ["Rhode Island","RI",[41.1,-71.9,42.1,-71.1]],
+  ["South Carolina","SC",[32.0,-83.4,35.3,-78.4]],
+  ["South Dakota","SD",[42.4,-104.1,46.0,-96.4]],
+  ["Tennessee","TN",[34.9,-90.4,36.7,-81.6]],
+  ["Texas","TX",[25.8,-106.7,36.6,-93.5]],
+  ["Utah","UT",[36.9,-114.1,42.1,-109.0]],
+  ["Vermont","VT",[42.7,-73.5,45.1,-71.5]],
+  ["Virginia","VA",[36.5,-83.7,39.5,-75.2]],
+  ["Washington","WA",[45.5,-124.8,49.1,-116.9]],
+  ["West Virginia","WV",[37.1,-82.7,40.7,-77.7]],
+  ["Wisconsin","WI",[42.4,-92.9,47.1,-86.8]],
+  ["Wyoming","WY",[40.9,-111.1,45.1,-104.0]]
 ];
 const COLORS={normal:"#4db66b",elev:"#e6b73f",high:"#e47a3c",very:"#d94a4a"};
 const $=id=>document.getElementById(id);
@@ -128,10 +183,29 @@ function riskColor(score){return score>=65?COLORS.very:score>=40?COLORS.high:sco
 function pointInRing(pt,ring){let x=pt[1],y=pt[0],inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1];const hit=((yi>y)!=(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi+1e-12)+xi);if(hit)inside=!inside}return inside}
 function pointInGeom(pt,g){if(!g)return false;if(g.type==="Polygon")return g.coordinates.some(r=>pointInRing(pt,r));if(g.type==="MultiPolygon")return g.coordinates.some(p=>p.some(r=>pointInRing(pt,r)));return false}
 
+const USGS_BASE="https://basemap.nationalmap.gov/arcgis/rest/services/";
+const BASEMAPS=[
+  {name:"USGS Imagery Topo",url:USGS_BASE+"USGSImageryTopo/MapServer/tile/{z}/{y}/{x}",attr:"USGS The National Map",maxNativeZoom:16,dim:false},
+  {name:"USGS Topo",url:USGS_BASE+"USGSTopo/MapServer/tile/{z}/{y}/{x}",attr:"USGS The National Map",maxNativeZoom:16,dim:true},
+  {name:"USGS Shaded Relief",url:USGS_BASE+"USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}",attr:"USGS The National Map",maxNativeZoom:15,dim:true},
+  {name:"OpenStreetMap",url:"https://tile.openstreetmap.org/{z}/{x}/{y}.png",attr:"&copy; OpenStreetMap contributors",maxNativeZoom:18,dim:true},
+  {name:"OpenTopoMap",url:"https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",attr:"&copy; OpenTopoMap (CC-BY-SA), &copy; OpenStreetMap contributors",maxNativeZoom:16,dim:true},
+  {name:"NASA GIBS Blue Marble",url:"https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg",attr:"NASA EOSDIS GIBS",maxNativeZoom:8,dim:false}
+];
 const map=L.map("map",{zoomControl:true}).fitBounds([[25.8,-106.7],[36.6,-93.5]]);
-L.tileLayer("https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",{
-  maxZoom:18,maxNativeZoom:16,attribution:"USGS The National Map"
-}).addTo(map);
+let baseLayer=null;
+function setBasemap(i){
+  const bm=BASEMAPS[i]||BASEMAPS[0];
+  if(baseLayer)map.removeLayer(baseLayer);
+  baseLayer=L.tileLayer(bm.url,{maxZoom:18,maxNativeZoom:bm.maxNativeZoom,attribution:bm.attr}).addTo(map);
+  document.body.classList.toggle("dim",!!bm.dim);
+}
+function initBasemap(){
+  const sel=$("basemap");
+  BASEMAPS.forEach((b,i)=>{const o=document.createElement("option");o.value=i;o.textContent=b.name;sel.appendChild(o)});
+  sel.value="0";setBasemap(0);
+  sel.addEventListener("change",()=>setBasemap(+sel.value));
+}
 const gaugeLayer=L.layerGroup().addTo(map);
 const alertLayer=L.geoJSON(null,{
   style:f=>({color:"#ff5f5f",weight:2,fillColor:"#ff5f5f",fillOpacity:.12,dashArray:f.properties?.event==="Flood Watch"?"5 4":null}),
@@ -148,6 +222,8 @@ const USGS_MS=15*60*1000,USGS_FALLBACK_MS=60*60*1000,NWS_MS=5*60*1000,SVI_MS=24*
 
 function initArea(){
   const sel=$("area");AREAS.forEach((a,i)=>{const o=document.createElement("option");o.value=i;o.textContent=a[0];sel.appendChild(o)});
+  const texasIndex=AREAS.findIndex(a=>a[1]==="TX");
+  sel.value=String(texasIndex>=0?texasIndex:0);
   sel.addEventListener("change",()=>{const b=area()[2];map.fitBounds([[b[0],b[1]],[b[2],b[3]]]);cache={};loadAll(true)});
 }
 function emptySeries(){return {now:null,rate:null,time:null,status:null,flag:null,flood:null,source:null};}
@@ -344,7 +420,7 @@ function schedule(){
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&navigator.onLine!==false){loadNWS(false);loadUSGS(false)}});
 window.addEventListener("online",()=>loadAll(false));
 $("refresh").addEventListener("click",()=>loadAll(true));
-initArea();schedule();loadAll(true);
+initBasemap();initArea();schedule();loadAll(true);
 </script>
 </body>
 </html>
