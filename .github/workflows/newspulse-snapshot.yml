@@ -24,9 +24,10 @@ jobs:
         with:
           fetch-depth: 0
       - name: Fetch keyless GDELT GEO snapshot
-        shell: python
+        shell: bash
         run: |
-          import json, math, os, re, time, urllib.parse, urllib.request
+          python - <<'PY'
+          import json, os, re, time, urllib.parse, urllib.request
           from datetime import datetime, timezone
           from html import unescape
 
@@ -91,13 +92,10 @@ jobs:
                       href = unescape(href)
                       if not href.startswith(('http://', 'https://')):
                           continue
-                      try:
-                          host = urllib.parse.urlparse(href).hostname or ''
-                          host = re.sub(r'^www\.', '', host)
-                          if host:
-                              domains.add(host)
-                      except Exception:
-                          pass
+                      host = urllib.parse.urlparse(href).hostname or ''
+                      host = re.sub(r'^www\.', '', host)
+                      if host:
+                          domains.add(host)
                       if len(links) < 5:
                           links.append({'href': href, 'text': host or 'article'})
                   out.append({
@@ -143,6 +141,7 @@ jobs:
           with open('daily-maps/data/newspulse.json', 'w', encoding='utf-8') as f:
               json.dump(payload, f, ensure_ascii=False, separators=(',', ':'))
               f.write('\n')
+          PY
       - name: Commit snapshot if changed
         run: |
           if git diff --quiet -- daily-maps/data/newspulse.json; then
