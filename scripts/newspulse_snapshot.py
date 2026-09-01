@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 LASTUPDATE = 'https://data.gdeltproject.org/gdeltv2/lastupdate.txt'
 STATE_PATH = 'daily-maps/data/newspulse-state.json'
 OUT_PATH = 'daily-maps/data/newspulse.json'
-USER_AGENT = 'MitchellCo-NewsPulse/4.0 (+https://christophermitchell012.github.io/wildfire-map/)'
+USER_AGENT = 'MitchellCo-NewsPulse/4.1 (+https://christophermitchell012.github.io/wildfire-map/)'
 KEEP_HOURS = 48
 MAX_LOCATIONS_PER_TOPIC = 600
 MAX_OUTPUT_PER_TOPIC = 200
@@ -53,7 +53,7 @@ def request_text(url):
 
 
 def parse_lastupdate(text):
-    files, latest_ts = {}, None
+    files, timestamps = {}, {}
     for line in text.splitlines():
         parts = line.strip().split()
         if len(parts) < 3:
@@ -64,10 +64,14 @@ def parse_lastupdate(text):
             continue
         ts, kind = m.group(1), m.group(2).lower()
         files[kind] = url
-        latest_ts = max(latest_ts or ts, ts)
-    if not latest_ts or not {'export.csv', 'mentions.csv', 'gkg.csv'} <= files.keys():
+        timestamps[kind] = ts
+    required = {'export.csv', 'mentions.csv', 'gkg.csv'}
+    if not required <= files.keys():
         raise RuntimeError('lastupdate.txt did not contain the expected export, mentions, and GKG files')
-    return latest_ts, files
+    # GDELT's three feeds can advance at slightly different times. Use the oldest latest
+    # timestamp so we only request 15-minute batches that should exist for all three feeds.
+    safe_latest_ts = min(timestamps[k] for k in required)
+    return safe_latest_ts, files, timestamps
 
 
 def sibling_url(template, ts):
@@ -189,14 +193,8 @@ def parse_gkg(url, bucket):
         if not themes or not locs:
             continue
         for topic, toff, _theme_name in themes:
-            # The disease/outbreak layer gets an additional article-level evidence gate.
-            # This intentionally trades recall for precision so unrelated political,
-            # entertainment, weather, etc. stories do not appear as outbreak links.
             if not topic_url_evidence(topic, doc_url):
                 continue
-            # Only attach an article link when we can establish proximity between the
-            # specific topic theme occurrence and a specific location occurrence.
-            # If either side lacks offsets, skip it rather than guessing.
             if toff is None:
                 continue
             with_offsets = [l for l in locs if l[3] is not None]
@@ -261,8 +259,6 @@ def load_state():
             return s
     except Exception:
         pass
-    # Version changes intentionally clear prior observations so stale/misclassified
-    # links from an older matching algorithm do not linger for 48 hours.
     return {'version': STATE_VERSION, 'processed': [], 'locations': {k: {} for k in TOPIC_THEME_TERMS}}
 
 
@@ -340,12 +336,14 @@ def build_window(state, latest_dt, hours):
 
 def main():
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
-    latest_ts, templates = parse_lastupdate(request_text(LASTUPDATE))
+    latest_ts, templates, feed_timestamps = parse_lastupdate(request_text(LASTUPDATE))
     latest_dt = datetime.strptime(latest_ts, '%Y%m%d%H%M%S').replace(tzinfo=timezone.utc)
     state = load_state()
     errors, processed_now = [], []
 
-    # Process the latest four 15-minute slots so a delayed 30-minute Action does not miss a batch.
+    # Process the latest four complete 15-minute slots so a delayed 30-minute Action
+    # does not miss a batch. "Complete" means all three GDELT feeds have advanced to
+    # at least this timestamp, avoiding transient 404s from a faster feed leading the rest.
     for minutes_back in (45, 30, 15, 0):
         dt = latest_dt - timedelta(minutes=minutes_back)
         ts = dt.strftime('%Y%m%d%H%M%S')
@@ -358,6 +356,10 @@ def main():
             parse_mentions(sibling_url(templates['mentions.csv'], ts), events, bucket)
             append_batch(state, ts, bucket)
             processed_now.append(ts)
+        except urllib.error.HTTPError as e:
+            # A historical slot can occasionally be absent upstream. Keep the prior
+            # rolling state and report a real gap, but do not manufacture data.
+            errors.append(f'{ts}: HTTP {e.code}')
         except Exception as e:
             errors.append(f'{ts}: {type(e).__name__}: {e}')
 
@@ -375,7 +377,8 @@ def main():
         'errors': errors[:20],
         'processed_now': processed_now,
         'rolling_history_hours': round(min(KEEP_HOURS, warm_hours), 2),
-        'method': 'Strict GKG topic themes with <=300-character theme/location proximity; disease/outbreak additionally requires disease-specific evidence in the article URL; structured CAMEO event locations and Mentions URLs supplement unrest/violence; 48h state retained incrementally.'
+        'feed_timestamps': feed_timestamps,
+        'method': 'Strict GKG topic themes with <=300-character theme/location proximity; disease/outbreak also requires disease evidence in the article URL; structured CAMEO event locations and Mentions URLs; 48h state retained incrementally.'
     }
     with open(STATE_PATH, 'w', encoding='utf-8') as f:
         json.dump(state, f, ensure_ascii=False, separators=(',', ':'))
@@ -383,7 +386,8 @@ def main():
     with open(OUT_PATH, 'w', encoding='utf-8') as f:
         json.dump(payload, f, ensure_ascii=False, separators=(',', ':'))
         f.write('\n')
-    print('Latest GDELT batch:', latest_ts)
+    print('Safe complete GDELT batch:', latest_ts)
+    print('Feed timestamps:', feed_timestamps)
     print('Processed now:', processed_now)
     print('Errors:', errors)
     print('Rolling history hours:', payload['rolling_history_hours'])
