@@ -2,6 +2,10 @@ import csv, io, json, math, os, re, time, urllib.parse, urllib.request, zipfile
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
+# GDELT GKG rows occasionally contain individual tab-delimited fields larger than
+# Python's default 128 KiB CSV parser limit. Keep a generous but bounded ceiling.
+csv.field_size_limit(10_000_000)
+
 LASTUPDATE = 'https://data.gdeltproject.org/gdeltv2/lastupdate.txt'
 STATE_PATH = 'daily-maps/data/newspulse-state.json'
 OUT_PATH = 'daily-maps/data/newspulse.json'
