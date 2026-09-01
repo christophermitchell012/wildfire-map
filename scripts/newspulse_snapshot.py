@@ -5,12 +5,12 @@ from datetime import datetime, timedelta, timezone
 LASTUPDATE = 'https://data.gdeltproject.org/gdeltv2/lastupdate.txt'
 STATE_PATH = 'daily-maps/data/newspulse-state.json'
 OUT_PATH = 'daily-maps/data/newspulse.json'
-USER_AGENT = 'MitchellCo-NewsPulse/3.0 (+https://christophermitchell012.github.io/wildfire-map/)'
+USER_AGENT = 'MitchellCo-NewsPulse/4.0 (+https://christophermitchell012.github.io/wildfire-map/)'
 KEEP_HOURS = 48
 MAX_LOCATIONS_PER_TOPIC = 600
 MAX_OUTPUT_PER_TOPIC = 200
 PROXIMITY_CHARS = 300
-STATE_VERSION = 3
+STATE_VERSION = 4
 
 # Deliberately avoid generic terms such as HEALTH, MEDICAL, ECON and BUSINESS.
 # Those broad GKG themes caused unrelated articles to be attached to topic/location dots.
@@ -22,6 +22,16 @@ TOPIC_THEME_TERMS = {
     'economy': ('LAYOFF', 'BANKRUPT', 'UNEMPLOY', 'RECESSION', 'PLANT_CLOS', 'FACTORY_CLOS', 'JOB_LOSS'),
 }
 EVENT_ROOT_TOPIC = {'14': 'unrest', '18': 'violence', '19': 'violence', '20': 'violence'}
+
+# Disease/outbreak is intentionally high precision. GKG theme proximity alone can still
+# associate a secondary disease theme with an unrelated location/article. Require the
+# article URL itself to carry disease/outbreak evidence before exposing it on this layer.
+HEALTH_URL_RE = re.compile(
+    r'(?:disease|outbreak|epidemic|pandemic|infect(?:ion|ed|ious)?|virus|viral|covid|'
+    r'flu|influenza|measles|mpox|cholera|ebola|dengue|malaria|salmonella|listeria|'
+    r'e[-_]?coli|rabies|rabid|west[-_]?nile|bird[-_]?flu|h5n1|diphtheria|screwworm)',
+    re.I,
+)
 
 
 def request_bytes(url, attempts=3, timeout=45):
@@ -89,6 +99,16 @@ def domain(url):
         return re.sub(r'^www\.', '', host.lower())
     except Exception:
         return ''
+
+
+def topic_url_evidence(topic, url):
+    if topic != 'health':
+        return True
+    try:
+        text = urllib.parse.unquote(url).lower()
+    except Exception:
+        text = str(url).lower()
+    return bool(HEALTH_URL_RE.search(text))
 
 
 def classify_theme(name):
@@ -169,6 +189,11 @@ def parse_gkg(url, bucket):
         if not themes or not locs:
             continue
         for topic, toff, _theme_name in themes:
+            # The disease/outbreak layer gets an additional article-level evidence gate.
+            # This intentionally trades recall for precision so unrelated political,
+            # entertainment, weather, etc. stories do not appear as outbreak links.
+            if not topic_url_evidence(topic, doc_url):
+                continue
             # Only attach an article link when we can establish proximity between the
             # specific topic theme occurrence and a specific location occurrence.
             # If either side lacks offsets, skip it rather than guessing.
@@ -350,7 +375,7 @@ def main():
         'errors': errors[:20],
         'processed_now': processed_now,
         'rolling_history_hours': round(min(KEEP_HOURS, warm_hours), 2),
-        'method': 'Strict GKG topic themes with <=300-character theme/location proximity plus structured CAMEO event locations and Mentions URLs; 48h state retained incrementally.'
+        'method': 'Strict GKG topic themes with <=300-character theme/location proximity; disease/outbreak additionally requires disease-specific evidence in the article URL; structured CAMEO event locations and Mentions URLs supplement unrest/violence; 48h state retained incrementally.'
     }
     with open(STATE_PATH, 'w', encoding='utf-8') as f:
         json.dump(state, f, ensure_ascii=False, separators=(',', ':'))
