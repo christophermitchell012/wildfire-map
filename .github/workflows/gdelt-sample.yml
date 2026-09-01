@@ -1,0 +1,50 @@
+name: GDELT sample rows
+
+on:
+  push:
+    paths:
+      - '.github/workflows/gdelt-sample.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch current GDELT files and save sample rows
+        shell: bash
+        run: |
+          python - <<'PY'
+          import csv, io, urllib.request, zipfile, re
+          lu='https://data.gdeltproject.org/gdeltv2/lastupdate.txt'
+          txt=urllib.request.urlopen(lu,timeout=45).read().decode()
+          urls=[]
+          for line in txt.splitlines():
+              p=line.split()
+              if len(p)>=3: urls.append(p[-1].replace('http://','https://'))
+          out=['LASTUPDATE',txt.strip(),'']
+          for u in urls:
+              kind=u.rsplit('/',1)[-1]
+              out.append('FILE '+kind)
+              raw=urllib.request.urlopen(u,timeout=60).read()
+              with zipfile.ZipFile(io.BytesIO(raw)) as z:
+                  with z.open(z.namelist()[0]) as f:
+                      text=io.TextIOWrapper(f,encoding='utf-8',errors='replace',newline='')
+                      r=csv.reader(text,delimiter='\t')
+                      for i,row in zip(range(5),r):
+                          out.append(f'ROW {i+1} FIELDS={len(row)}\t'+'\t'.join(row))
+              out.append('')
+          open('daily-maps/data/gdelt-current-sample.txt','w',encoding='utf-8').write('\n'.join(out)+'\n')
+          PY
+      - name: Commit sample
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add daily-maps/data/gdelt-current-sample.txt
+          git commit -m "Capture current GDELT sample rows" || exit 0
+          git pull --rebase origin main
+          git push
