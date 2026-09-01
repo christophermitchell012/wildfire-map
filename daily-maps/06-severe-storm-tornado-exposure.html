@@ -12,78 +12,69 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Severe Storm & Tornado Exposure | MitchellCo</title>
-<link id="leafletCss" rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous" onerror="this.onerror=null;this.removeAttribute('integrity');this.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
 <style>
-:root{--bg:#0e1724;--panel:#132033;--panel2:#192b42;--text:#edf4fb;--muted:#9db0c5;--line:#2c425a;--accent:#69b7ff;--warn:#ffcf4d;--danger:#ff6161}
-*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
-body{display:grid;grid-template-columns:365px minmax(0,1fr);overflow:hidden}
-aside{height:100vh;overflow:auto;background:linear-gradient(180deg,var(--panel),#0f1b2a);border-right:1px solid var(--line);padding:18px 16px 24px;z-index:1000}
-#map{height:100vh;width:100%;min-width:0;position:relative;overflow:hidden;background:#0e1724}
-h1{font-size:21px;line-height:1.15;margin:0 0 6px}.sub{font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:14px}.card{background:rgba(25,43,66,.82);border:1px solid var(--line);border-radius:10px;padding:11px;margin:10px 0}.status{font-size:12px;line-height:1.55}.status b{color:#fff}.row{display:flex;justify-content:space-between;gap:10px}.controls label{display:flex;align-items:center;gap:8px;font-size:13px;margin:7px 0;cursor:pointer}.controls input{accent-color:#7cc4ff}.legend-row{display:flex;align-items:center;gap:8px;font-size:12px;margin:5px 0}.swatch{width:17px;height:10px;border-radius:2px;display:inline-block;border:1px solid rgba(255,255,255,.35)}.rank-title{font-size:13px;font-weight:700;margin:14px 0 6px}.rank{width:100%;border-collapse:collapse;font-size:11px}.rank th{color:var(--muted);font-weight:600;text-align:left;border-bottom:1px solid var(--line);padding:5px 4px}.rank td{padding:6px 4px;border-bottom:1px solid rgba(44,66,90,.55);vertical-align:top}.rank tr[data-key]{cursor:pointer}.rank tr[data-key]:hover{background:rgba(105,183,255,.1)}.score{font-weight:800}.tiny{font-size:10.5px;color:var(--muted);line-height:1.45}.sources a{color:#9ed2ff;text-decoration:none}.sources a:hover{text-decoration:underline}.error{color:#ffc1c1}.ok{color:#b8efc4}footer{font-size:10.5px;color:#7f92a8;margin-top:18px;padding-top:10px;border-top:1px solid var(--line)}
-.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#17283c;color:#edf4fb}.leaflet-popup-content{font-size:12px;line-height:1.45;min-width:230px}.leaflet-popup-content a{color:#9ed2ff}.leaflet-control-layers{background:#142338;color:#edf4fb;border-color:#41566d}.leaflet-control-layers-separator{border-color:#41566d}
-/* Critical Leaflet layout fallback. These rules keep tiles/panes aligned even if the CDN stylesheet is delayed or rejected. */
-.leaflet-container{overflow:hidden;outline:0}.leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}.leaflet-container .leaflet-overlay-pane svg{max-width:none!important;max-height:none!important}.leaflet-container .leaflet-marker-pane img,.leaflet-container .leaflet-shadow-pane img,.leaflet-container .leaflet-tile-pane img,.leaflet-container img.leaflet-image-layer,.leaflet-container .leaflet-tile{max-width:none!important;max-height:none!important;width:auto;padding:0}.leaflet-tile{visibility:hidden}.leaflet-tile-loaded{visibility:inherit}.leaflet-zoom-animated{transform-origin:0 0}.leaflet-map-pane canvas{z-index:100}.leaflet-map-pane svg{z-index:200}.leaflet-tile-pane{z-index:200}.leaflet-overlay-pane{z-index:400}.leaflet-shadow-pane{z-index:500}.leaflet-marker-pane{z-index:600}.leaflet-tooltip-pane{z-index:650}.leaflet-popup-pane{z-index:700}.leaflet-control{position:relative;z-index:800;pointer-events:auto}.leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}.leaflet-top{top:0}.leaflet-right{right:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}.leaflet-control{float:left;clear:both}.leaflet-right .leaflet-control{float:right}.leaflet-top .leaflet-control{margin-top:10px}.leaflet-bottom .leaflet-control{margin-bottom:10px}.leaflet-left .leaflet-control{margin-left:10px}.leaflet-right .leaflet-control{margin-right:10px}
-@media(max-width:760px){body{grid-template-columns:1fr;grid-template-rows:45vh 55vh;overflow:auto}aside{height:45vh;border-right:0;border-bottom:1px solid var(--line);padding:12px}#map{height:55vh}h1{font-size:18px}}
+:root{--bg:#0e1724;--panel:#132033;--text:#edf4fb;--muted:#9db0c5;--line:#2c425a}
+*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}body{display:grid;grid-template-columns:365px minmax(0,1fr);overflow:hidden}aside{height:100vh;overflow:auto;background:linear-gradient(180deg,var(--panel),#0f1b2a);border-right:1px solid var(--line);padding:18px 16px 24px;z-index:1000}#map{height:100vh;width:100%;min-width:0;position:relative;overflow:hidden}.card{background:rgba(25,43,66,.82);border:1px solid var(--line);border-radius:10px;padding:11px;margin:10px 0}.sub,.tiny{color:var(--muted);line-height:1.45}.sub{font-size:12px;margin:6px 0 14px}.tiny{font-size:10.5px}.row{display:flex;justify-content:space-between;gap:10px;font-size:12px;line-height:1.55}.controls label{display:flex;align-items:center;gap:8px;font-size:13px;margin:7px 0}.legend-row{display:flex;align-items:center;gap:8px;font-size:12px;margin:5px 0}.swatch{width:17px;height:10px;border-radius:2px;border:1px solid rgba(255,255,255,.35)}.rank-title{font-size:13px;font-weight:700;margin:14px 0 6px}.rank{width:100%;border-collapse:collapse;font-size:11px}.rank th{color:var(--muted);text-align:left;border-bottom:1px solid var(--line);padding:5px 4px}.rank td{padding:6px 4px;border-bottom:1px solid rgba(44,66,90,.55)}.rank tr[data-key]{cursor:pointer}.error{color:#ffc1c1}.ok{color:#b8efc4}.sources a,.leaflet-popup-content a{color:#9ed2ff}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#17283c;color:#edf4fb}footer{font-size:10.5px;color:#7f92a8;margin-top:18px;padding-top:10px;border-top:1px solid var(--line)}
+@media(max-width:760px){body{grid-template-columns:1fr;grid-template-rows:45vh 55vh;overflow:auto}aside{height:45vh;border-right:0;border-bottom:1px solid var(--line);padding:12px}#map{height:55vh}}
 </style>
 </head>
 <body>
 <aside>
-  <h1>Severe Storm & Tornado Exposure</h1>
-  <div class="sub">Fuses official SPC severe-weather outlooks, active NWS warnings/watches, recent NWS storm reports and Census county population. The county ranking is a <b>non-official screening tool</b>, not a warning or forecast.</div>
-  <div class="card status">
-    <div class="row"><span>Map renderer</span><b id="mapStatus">checking…</b></div>
-    <div class="row"><span>SPC outlook</span><b id="spcStatus">loading…</b></div>
-    <div class="row"><span>NWS alerts</span><b id="alertStatus">loading…</b></div>
-    <div class="row"><span>Storm reports</span><b id="reportStatus">loading…</b></div>
-    <div class="row"><span>Population</span><b id="popStatus">loading…</b></div>
-    <div class="tiny" id="updatedLine" style="margin-top:6px">Last checked: loading…</div>
-  </div>
-  <div class="card controls">
-    <b style="font-size:13px">Layers</b>
-    <label><input type="checkbox" id="toggleCat" checked> SPC Day 1 categorical outlook</label>
-    <label><input type="checkbox" id="toggleTor" checked> SPC Day 1 tornado probability</label>
-    <label><input type="checkbox" id="toggleAlerts" checked> Active severe/tornado watches & warnings</label>
-    <label><input type="checkbox" id="toggleReports" checked> NWS severe storm reports, last 24h</label>
-    <label><input type="checkbox" id="toggleExposure" checked> Derived county exposure screen</label>
-  </div>
-  <div class="card">
-    <b style="font-size:13px">How to read it</b>
-    <div class="legend-row"><span class="swatch" style="background:#65a665"></span>Marginal SPC risk</div>
-    <div class="legend-row"><span class="swatch" style="background:#ffe066"></span>Slight</div>
-    <div class="legend-row"><span class="swatch" style="background:#ffa366"></span>Enhanced</div>
-    <div class="legend-row"><span class="swatch" style="background:#e06666"></span>Moderate</div>
-    <div class="legend-row"><span class="swatch" style="background:#ee99ee"></span>High</div>
-    <div class="legend-row"><span class="swatch" style="background:#ff3939"></span>Active warning</div>
-    <div class="tiny" style="margin-top:7px">SPC outlooks are official forecast probabilities. NWS warnings are official short-fuse hazard products. The county score is derived and non-official.</div>
-  </div>
-  <div class="rank-title">Counties with highest derived exposure</div>
-  <table class="rank" aria-label="County severe storm exposure ranking"><thead><tr><th>#</th><th>County</th><th>Pop.</th><th>Score</th></tr></thead><tbody id="rankBody"><tr><td colspan="4" class="tiny">Waiting for source layers…</td></tr></tbody></table>
-  <div class="card tiny"><b>Derived score</b><br>County centroid screening only: <code>risk + alert + population</code>, capped at 100. SPC risk contributes 0/18/30/45/62/78 for none/marginal/slight/enhanced/moderate/high; tornado probability adds up to 12; Severe Thunderstorm Warning adds 12; Tornado Warning adds 25; watches add 5; population contributes <code>min(15, 3×log10(population))</code>. Missing optional live layers are treated as zero rather than blocking the entire exposure layer.</div>
-  <div class="card tiny sources"><b>Sources & cadence</b><br>
-    <a href="https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/SPC_wx_outlks/FeatureServer" target="_blank" rel="noopener">NOAA/NWS Storm Prediction Center outlook service</a>: checked every 15 min.<br><br>
-    <a href="https://api.weather.gov/alerts" target="_blank" rel="noopener">NWS Alerts API</a>: checked every 2 min. Status distinguishes relevant alerts from alerts with drawable polygon geometry.<br><br>
-    <a href="https://mapservices.weather.noaa.gov/vector/rest/services/obs/nws_local_storm_reports/MapServer" target="_blank" rel="noopener">NWS Local Storm Reports</a>: checked every 30 min.<br><br>
-    <a href="https://api.census.gov/data/2024/acs/acs5" target="_blank" rel="noopener">2024 ACS 5-year population</a> + <a href="https://tigerweb.geo.census.gov/arcgis/rest/services/Generalized_ACS2025/State_County/MapServer" target="_blank" rel="noopener">2025 TIGERweb generalized counties</a>: static for this page session.
-  </div>
-  <footer>© 2026 MitchellCo Inc.<br>Map tiles © OpenStreetMap contributors. NOAA/NWS/SPC and U.S. Census data remain subject to their respective source terms and attribution.</footer>
+<h1>Severe Storm & Tornado Exposure</h1>
+<div class="sub">Fuses official SPC severe-weather outlooks, active NWS warnings/watches, recent NWS storm reports and county population. County rankings are a non-official screening tool.</div>
+<div class="card">
+<div class="row"><span>SPC outlook</span><b id="spcStatus">loading…</b></div>
+<div class="row"><span>NWS alerts</span><b id="alertStatus">loading…</b></div>
+<div class="row"><span>Storm reports</span><b id="reportStatus">loading…</b></div>
+<div class="row"><span>County geometry</span><b id="countyStatus">loading…</b></div>
+<div class="row"><span>Population</span><b id="popStatus">loading…</b></div>
+<div class="tiny" id="updatedLine" style="margin-top:6px">Last checked: loading…</div>
+</div>
+<div class="card controls"><b>Layers</b>
+<label><input type="checkbox" id="toggleCat" checked> SPC Day 1 categorical outlook</label>
+<label><input type="checkbox" id="toggleTor" checked> SPC Day 1 tornado probability</label>
+<label><input type="checkbox" id="toggleAlerts" checked> Active severe/tornado watches & warnings</label>
+<label><input type="checkbox" id="toggleReports" checked> NWS severe storm reports, last 24h</label>
+<label><input type="checkbox" id="toggleExposure" checked> Derived county exposure screen</label>
+</div>
+<div class="card"><b>How to read it</b>
+<div class="legend-row"><span class="swatch" style="background:#65a665"></span>Marginal SPC risk</div>
+<div class="legend-row"><span class="swatch" style="background:#ffe066"></span>Slight</div>
+<div class="legend-row"><span class="swatch" style="background:#ffa366"></span>Enhanced</div>
+<div class="legend-row"><span class="swatch" style="background:#e06666"></span>Moderate</div>
+<div class="legend-row"><span class="swatch" style="background:#ee99ee"></span>High</div>
+<div class="legend-row"><span class="swatch" style="background:#ff3939"></span>Active warning</div>
+</div>
+<div class="rank-title">Counties with highest derived exposure</div>
+<table class="rank"><thead><tr><th>#</th><th>County</th><th>Pop.</th><th>Score</th></tr></thead><tbody id="rankBody"><tr><td colspan="4" class="tiny">Waiting for county geometry…</td></tr></tbody></table>
+<div class="card tiny"><b>Derived score</b><br>County internal-point screening: SPC category + tornado probability + active warning/watch + population, capped at 100. Missing optional hazard or population inputs are treated as zero rather than blocking the ranking.</div>
+<div class="card tiny sources"><b>Sources & cadence</b><br>
+<a href="https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/SPC_wx_outlks/FeatureServer" target="_blank" rel="noopener">NOAA/NWS SPC</a>: checked every 15 min.<br><br>
+<a href="https://api.weather.gov/alerts" target="_blank" rel="noopener">NWS Alerts API</a>: checked every 2 min.<br><br>
+<a href="https://mapservices.weather.noaa.gov/vector/rest/services/obs/nws_local_storm_reports/MapServer" target="_blank" rel="noopener">NWS Local Storm Reports</a>: checked every 30 min.<br><br>
+<a href="https://tigerweb.geo.census.gov/arcgis/rest/services/Generalized_ACS2025/State_County/MapServer/13" target="_blank" rel="noopener">U.S. Census TIGERweb 2025 generalized counties</a>: static per session.<br><br>
+<a href="https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/ACS_Population_and_Housing_Basics_View_Centroids/FeatureServer/1" target="_blank" rel="noopener">Esri Living Atlas ACS population/housing county layer</a>: public anonymous service derived from U.S. Census ACS; loaded once per session. Direct Census Data API is not used because it now requires an API key.
+</div>
+<footer>© 2026 MitchellCo Inc.<br>Map tiles © OpenStreetMap contributors. NOAA/NWS/SPC, U.S. Census and Esri source data retain their respective attribution and terms.</footer>
 </aside>
 <div id="map"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7.2.0/turf.min.js"></script>
 <script>
 'use strict';
-const EMPTY_FC={type:'FeatureCollection',features:[]};
-const map=L.map('map',{zoomControl:true,minZoom:3}).setView([38.4,-97.2],4);
-const osm=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
+const EMPTY={type:'FeatureCollection',features:[]};
+const map=L.map('map',{minZoom:3}).setView([38.4,-97.2],4);
+const osm=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
 const groups={cat:L.layerGroup().addTo(map),tor:L.layerGroup().addTo(map),alerts:L.layerGroup().addTo(map),reports:L.layerGroup().addTo(map),exposure:L.layerGroup().addTo(map)};
 const state={cat:null,tor:null,alerts:null,reports:null,counties:null,pop:new Map(),rankMarkers:new Map(),busy:new Set(),last:{}};
 const endpoints={
-  cat:'https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/SPC_wx_outlks/FeatureServer/1/query?where=1%3D1&outFields=dn,valid,expire,issue,idp_filedate&returnGeometry=true&outSR=4326&f=geojson',
-  tor:'https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/SPC_wx_outlks/FeatureServer/3/query?where=1%3D1&outFields=dn,valid,expire,issue,idp_filedate&returnGeometry=true&outSR=4326&f=geojson',
-  alerts:'https://api.weather.gov/alerts/active',
-  reports:'https://mapservices.weather.noaa.gov/vector/rest/services/obs/nws_local_storm_reports/MapServer/0/query?where=descript%20in%20(%27Tornado%27,%27Funnel%20Cloud%27,%27Hail%27,%27Tstm%20Wnd%20Dmg%27,%27Tstm%20Wnd%20Gst%27,%27Lightning%27)&outFields=*&returnGeometry=true&outSR=4326&f=geojson',
-  counties:'https://tigerweb.geo.census.gov/arcgis/rest/services/Generalized_ACS2025/State_County/MapServer/13/query?where=STATE%3C%2757%27&outFields=GEOID,NAME,STATE,COUNTY,CENTLAT,CENTLON&returnGeometry=true&outSR=4326&f=geojson',
-  population:'https://api.census.gov/data/2024/acs/acs5?get=NAME%2CB01003_001E&for=county%3A%2A&in=state%3A%2A'
+cat:'https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/SPC_wx_outlks/FeatureServer/1/query?where=1%3D1&outFields=dn,valid,expire&returnGeometry=true&outSR=4326&f=geojson',
+tor:'https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/SPC_wx_outlks/FeatureServer/3/query?where=1%3D1&outFields=dn,valid,expire&returnGeometry=true&outSR=4326&f=geojson',
+alerts:'https://api.weather.gov/alerts/active',
+reports:'https://mapservices.weather.noaa.gov/vector/rest/services/obs/nws_local_storm_reports/MapServer/0/query?where=descript%20in%20(%27Tornado%27,%27Funnel%20Cloud%27,%27Hail%27,%27Tstm%20Wnd%20Dmg%27,%27Tstm%20Wnd%20Gst%27,%27Lightning%27)&outFields=*&returnGeometry=true&outSR=4326&f=geojson',
+counties:'https://tigerweb.geo.census.gov/arcgis/rest/services/Generalized_ACS2025/State_County/MapServer/13/query?where=STATE%3C%2757%27&outFields=GEOID,NAME,STATE,COUNTY,CENTLAT,CENTLON&returnGeometry=true&outSR=4326&f=geojson',
+popBase:'https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/ACS_Population_and_Housing_Basics_View_Centroids/FeatureServer/1/query'
 };
 const catLabel={2:'Thunderstorm',3:'Marginal',4:'Slight',5:'Enhanced',6:'Moderate',8:'High'};
 const catColor={2:'#b5deb5',3:'#65a665',4:'#ffe066',5:'#ffa366',6:'#e06666',8:'#ee99ee'};
@@ -91,42 +82,26 @@ const catPts={2:0,3:18,4:30,5:45,6:62,8:78};
 const alertPts={'Severe Thunderstorm Watch':5,'Tornado Watch':5,'Severe Thunderstorm Warning':12,'Tornado Warning':25};
 const alertColor={'Severe Thunderstorm Watch':'#e4b323','Tornado Watch':'#e77adf','Severe Thunderstorm Warning':'#ff8a32','Tornado Warning':'#ff3939'};
 const reportColor={'Tornado':'#ff45d4','Funnel Cloud':'#cc65ff','Hail':'#71b9ff','Tstm Wnd Dmg':'#45e08a','Tstm Wnd Gst':'#45e08a','Lightning':'#f7df4a'};
-function fmtTime(v){if(!v)return 'unknown';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString();}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function setStatus(id,text,cls=''){const el=document.getElementById(id);if(!el)return;el.textContent=text;el.className=cls;}
-async function getJSON(url,key){if(state.busy.has(key))return null;state.busy.add(key);try{const r=await fetch(url,{headers:{Accept:'application/geo+json, application/json'}});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();state.last[key]=Date.now();return j;}finally{state.busy.delete(key);}}
-function featureContains(feature,pt){try{return !!feature?.geometry&&turf.booleanPointInPolygon(pt,feature);}catch{return false;}}
-function addGeoJSON(group,data,opts){return L.geoJSON(data||EMPTY_FC,opts).addTo(group);}
-function ensureLeafletCss(){
-  const pane=map.getPane('tilePane');
-  if(pane&&getComputedStyle(pane).position==='absolute'){setStatus('mapStatus','Leaflet CSS OK','ok');return;}
-  setStatus('mapStatus','loading CSS fallback…','error');
-  if(!document.getElementById('leafletCssFallback')){
-    const link=document.createElement('link');link.id='leafletCssFallback';link.rel='stylesheet';link.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
-    link.onload=()=>{setStatus('mapStatus','fallback CSS loaded','ok');map.invalidateSize(true);osm.redraw();};
-    link.onerror=()=>setStatus('mapStatus','critical fallback only','error');document.head.appendChild(link);
-  }
-}
-async function loadSPC(){try{const [cat,tor]=await Promise.all([getJSON(endpoints.cat,'cat'),getJSON(endpoints.tor,'tor')]);if(cat){state.cat=cat;groups.cat.clearLayers();addGeoJSON(groups.cat,cat,{style:f=>({color:catColor[f.properties.dn]||'#999',weight:1.4,fillColor:catColor[f.properties.dn]||'#999',fillOpacity:f.properties.dn===2?.08:.22}),onEachFeature:(f,l)=>l.bindPopup(`<b>SPC Day 1: ${esc(catLabel[f.properties.dn]||f.properties.dn)}</b><br>Valid: ${esc(f.properties.valid||'n/a')}<br>Expires: ${esc(f.properties.expire||'n/a')}<br><span class="tiny">Official SPC outlook category.</span>`) });}if(tor){state.tor=tor;groups.tor.clearLayers();addGeoJSON(groups.tor,tor,{style:f=>({color:'#ff4b9a',weight:1.2,dashArray:'5 4',fillColor:'#ff4b9a',fillOpacity:Math.min(.05+Number(f.properties.dn||0)/180,.3)}),onEachFeature:(f,l)=>l.bindPopup(`<b>SPC tornado probability: ${esc(f.properties.dn)}%</b><br>Valid: ${esc(f.properties.valid||'n/a')}<br><span class="tiny">Official probability within the outlook period.</span>`) });}setStatus('spcStatus',`${cat?.features?.length||0} cat · ${tor?.features?.length||0} tornado`,'ok');recomputeExposure();}catch(e){setStatus('spcStatus','unavailable','error');console.error('SPC',e);recomputeExposure();}}
-function relevantAlert(f){return Object.prototype.hasOwnProperty.call(alertPts,f.properties?.event);}
-async function loadAlerts(){try{const data=await getJSON(endpoints.alerts,'alerts');if(!data)return;const filtered={type:'FeatureCollection',features:(data.features||[]).filter(relevantAlert)};const drawable={type:'FeatureCollection',features:filtered.features.filter(f=>f.geometry)};state.alerts=filtered;groups.alerts.clearLayers();addGeoJSON(groups.alerts,drawable,{style:f=>({color:alertColor[f.properties.event]||'#ff6b6b',weight:f.properties.event.includes('Warning')?3:2,fillColor:alertColor[f.properties.event]||'#ff6b6b',fillOpacity:f.properties.event.includes('Warning')?.18:.08}),onEachFeature:(f,l)=>{const p=f.properties||{};const link=f.id||p['@id']||p.id||'';l.bindPopup(`<b>${esc(p.event)}</b><br>${esc(p.headline||p.areaDesc||'')}<br><b>Severity:</b> ${esc(p.severity||'n/a')} · <b>Urgency:</b> ${esc(p.urgency||'n/a')}<br><b>Expires:</b> ${esc(fmtTime(p.expires))}${link?`<br><a href="${esc(link)}" target="_blank" rel="noopener">Official NWS alert</a>`:''}`);}});setStatus('alertStatus',`${filtered.features.length} active · ${drawable.features.length} mapped`,'ok');recomputeExposure();}catch(e){setStatus('alertStatus','unavailable','error');console.error('Alerts',e);recomputeExposure();}}
-async function loadReports(){try{const data=await getJSON(endpoints.reports,'reports');if(!data)return;state.reports=data;groups.reports.clearLayers();addGeoJSON(groups.reports,data,{pointToLayer:(f,ll)=>L.circleMarker(ll,{radius:5,color:'#fff',weight:1,fillColor:reportColor[f.properties?.descript]||'#65b7ff',fillOpacity:.9}),onEachFeature:(f,l)=>{const p=f.properties||{};l.bindPopup(`<b>${esc(p.descript||'Storm report')}</b><br>${esc(p.loc_desc||'')} ${esc(p.state||'')}<br>${p.magnitude?`<b>Magnitude:</b> ${esc(p.magnitude)} ${esc(p.units||'')}<br>`:''}<b>Report time:</b> ${esc(p.valid_time||fmtTime(p.lsr_validtime))}<br>${esc(p.remarks||'')}<br><span class="tiny">Official NWS Local Storm Report; reports may be preliminary.</span>`);}});setStatus('reportStatus',`${data.features?.length||0} in 24h`,'ok');}catch(e){setStatus('reportStatus','unavailable','error');console.error('Reports',e);}}
-async function loadPopulationAndCounties(){try{const [pop,counties]=await Promise.all([getJSON(endpoints.population,'population'),getJSON(endpoints.counties,'counties')]);if(pop){const head=pop[0]||[];const gi=head.indexOf('state'),ci=head.indexOf('county'),pi=head.indexOf('B01003_001E');for(const r of pop.slice(1)){const geoid=String(r[gi]||'').padStart(2,'0')+String(r[ci]||'').padStart(3,'0');const n=Number(r[pi]);if(Number.isFinite(n))state.pop.set(geoid,n);}}if(counties)state.counties=counties;setStatus('popStatus',`${state.pop.size.toLocaleString()} counties · ACS 2024`,'ok');recomputeExposure();}catch(e){setStatus('popStatus','unavailable','error');console.error('Population/counties',e);}}
-function maxPolygonValue(fc,pt,prop){let best=0;for(const f of (fc||EMPTY_FC).features||[]){if(featureContains(f,pt))best=Math.max(best,Number(f.properties?.[prop]||0));}return best;}
-function warningScore(pt){let best=0,label='';for(const f of (state.alerts||EMPTY_FC).features||[]){if(!f.geometry)continue;if(featureContains(f,pt)){const e=f.properties?.event||'';const v=alertPts[e]||0;if(v>best){best=v;label=e;}}}return {best,label};}
-function tornadoBonus(prob){return Math.min(12,prob/5);}function riskName(dn){return catLabel[dn]||'None';}
-function recomputeExposure(){if(!state.counties)return;groups.exposure.clearLayers();state.rankMarkers.clear();const rows=[];for(const f of state.counties.features||[]){const p=f.properties||{};const geoid=p.GEOID;const lat=Number(p.CENTLAT),lon=Number(p.CENTLON);if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;const pt=turf.point([lon,lat]);const cat=maxPolygonValue(state.cat,pt,'dn');const torn=maxPolygonValue(state.tor,pt,'dn');const aw=warningScore(pt);const pop=state.pop.get(geoid)||0;const popPts=pop>0?Math.min(15,3*Math.log10(pop)):0;const score=Math.min(100,(catPts[cat]||0)+tornadoBonus(torn)+aw.best+popPts);if(score<25)continue;rows.push({key:geoid,name:p.NAME||geoid,pop,score,cat,torn,alert:aw.label,lat,lon,feature:f});}rows.sort((a,b)=>b.score-a.score||b.pop-a.pop);const top=rows.slice(0,12);for(const x of top){const fill=x.score>=75?'#ff4242':x.score>=55?'#ff9f43':'#ffd45a';const gj=L.geoJSON(x.feature,{style:{color:fill,weight:2,fillColor:fill,fillOpacity:.14}}).addTo(groups.exposure);const popup=`<b>${esc(x.name)}</b><br><b>Derived exposure score:</b> ${x.score.toFixed(0)}/100<br><b>Population:</b> ${x.pop.toLocaleString()} (ACS 2024)<br><b>SPC category:</b> ${esc(riskName(x.cat))}<br><b>Tornado probability:</b> ${x.torn||0}%<br><b>Active alert at county internal point:</b> ${esc(x.alert||'none')}<br><span class="tiny">Non-official centroid-based screening result.</span>`;gj.bindPopup(popup);state.rankMarkers.set(x.key,{lat:x.lat,lon:x.lon,layer:gj});}renderRank(top);}
-function renderRank(rows){const body=document.getElementById('rankBody');if(!rows.length){body.innerHTML='<tr><td colspan="4" class="tiny">No counties currently exceed the screening threshold, or hazard layers are unavailable.</td></tr>';return;}body.innerHTML=rows.map((x,i)=>`<tr data-key="${esc(x.key)}"><td>${i+1}</td><td><b>${esc(x.name)}</b><br><span class="tiny">${esc(riskName(x.cat))}${x.alert?' · '+esc(x.alert):''}</span></td><td>${x.pop?Math.round(x.pop/1000).toLocaleString()+'k':'n/a'}</td><td class="score">${x.score.toFixed(0)}</td></tr>`).join('');body.querySelectorAll('tr[data-key]').forEach(tr=>tr.addEventListener('click',()=>{const m=state.rankMarkers.get(tr.dataset.key);if(!m)return;map.flyTo([m.lat,m.lon],Math.max(map.getZoom(),7),{duration:.7});setTimeout(()=>m.layer.openPopup(),750);}));}
-function updateChecked(id,group){document.getElementById(id).addEventListener('change',e=>e.target.checked?group.addTo(map):map.removeLayer(group));}
-updateChecked('toggleCat',groups.cat);updateChecked('toggleTor',groups.tor);updateChecked('toggleAlerts',groups.alerts);updateChecked('toggleReports',groups.reports);updateChecked('toggleExposure',groups.exposure);
-L.control.layers({'OpenStreetMap':osm},{'SPC categorical':groups.cat,'SPC tornado probability':groups.tor,'NWS alerts':groups.alerts,'Storm reports':groups.reports,'Derived county exposure':groups.exposure},{collapsed:true}).addTo(map);
-function updateClock(){const stamps=Object.values(state.last).filter(Boolean);const latest=stamps.length?Math.max(...stamps):null;document.getElementById('updatedLine').textContent='Last checked: '+(latest?new Date(latest).toLocaleString():'waiting for first successful load');}
-setInterval(updateClock,1000);
-function guarded(fn){if(document.hidden||!navigator.onLine)return;fn();}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&navigator.onLine){guarded(loadAlerts);guarded(loadSPC);map.invalidateSize(false);}});window.addEventListener('online',()=>{guarded(loadAlerts);guarded(loadSPC);guarded(loadReports);map.invalidateSize(false);});window.addEventListener('resize',()=>map.invalidateSize(false));
-requestAnimationFrame(()=>{map.invalidateSize(true);ensureLeafletCss();setTimeout(ensureLeafletCss,1000);});
-loadPopulationAndCounties();loadSPC();setTimeout(loadAlerts,600);setTimeout(loadReports,1200);
-setInterval(()=>guarded(loadAlerts),120000);setInterval(()=>guarded(loadSPC),900000);setInterval(()=>guarded(loadReports),1800000);
+function setStatus(id,text,cls=''){const e=document.getElementById(id);if(e){e.textContent=text;e.className=cls;}}
+async function getJSON(url,key){if(state.busy.has(key))return null;state.busy.add(key);try{const r=await fetch(url,{headers:{Accept:'application/geo+json, application/json'}});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();if(j&&j.error)throw new Error(j.error.message||'service error');state.last[key]=Date.now();return j;}finally{state.busy.delete(key);}}
+function contains(f,pt){try{return !!f?.geometry&&turf.booleanPointInPolygon(pt,f);}catch{return false;}}
+function addGeo(group,data,opts){return L.geoJSON(data||EMPTY,opts).addTo(group);}
+async function loadCounties(){try{const data=await getJSON(endpoints.counties,'counties');if(!data?.features)throw new Error('No county features');state.counties=data;setStatus('countyStatus',`${data.features.length.toLocaleString()} loaded`,'ok');recomputeExposure();}catch(e){setStatus('countyStatus','unavailable','error');document.getElementById('rankBody').innerHTML='<tr><td colspan="4" class="tiny">County geometry unavailable; ranking cannot be calculated.</td></tr>';console.error('Counties',e);}}
+async function loadPopulation(){try{state.pop.clear();let offset=0;const pageSize=1000;for(let page=0;page<6;page++){const q=new URLSearchParams({where:'1=1',outFields:'GEOID,B01001_001E',returnGeometry:'false',orderByFields:'OBJECTID',resultOffset:String(offset),resultRecordCount:String(pageSize),f:'json'});const data=await getJSON(endpoints.popBase+'?'+q.toString(),'population-'+page);const fs=data?.features||[];for(const f of fs){const p=f.attributes||f.properties||{};const geoid=String(p.GEOID||'');const n=Number(p.B01001_001E);if(geoid.length===5&&Number.isFinite(n))state.pop.set(geoid,n);}if(fs.length<pageSize)break;offset+=pageSize;}if(!state.pop.size)throw new Error('No population records');setStatus('popStatus',`${state.pop.size.toLocaleString()} counties · ACS`,'ok');recomputeExposure();}catch(e){setStatus('popStatus','unavailable · ranking continues without it','error');console.error('Population',e);recomputeExposure();}}
+async function loadSPC(){try{const [cat,tor]=await Promise.all([getJSON(endpoints.cat,'cat'),getJSON(endpoints.tor,'tor')]);if(cat){state.cat=cat;groups.cat.clearLayers();addGeo(groups.cat,cat,{style:f=>({color:catColor[f.properties.dn]||'#999',weight:1.4,fillColor:catColor[f.properties.dn]||'#999',fillOpacity:f.properties.dn===2?.08:.22})});}if(tor){state.tor=tor;groups.tor.clearLayers();addGeo(groups.tor,tor,{style:f=>({color:'#ff4b9a',weight:1.2,dashArray:'5 4',fillColor:'#ff4b9a',fillOpacity:.12})});}setStatus('spcStatus',`${cat?.features?.length||0} cat · ${tor?.features?.length||0} tornado`,'ok');recomputeExposure();}catch(e){setStatus('spcStatus','unavailable','error');console.error('SPC',e);recomputeExposure();}}
+async function loadAlerts(){try{const data=await getJSON(endpoints.alerts,'alerts');if(!data)return;const fs=(data.features||[]).filter(f=>Object.prototype.hasOwnProperty.call(alertPts,f.properties?.event));state.alerts={type:'FeatureCollection',features:fs};groups.alerts.clearLayers();addGeo(groups.alerts,{type:'FeatureCollection',features:fs.filter(f=>f.geometry)},{style:f=>({color:alertColor[f.properties.event]||'#ff6b6b',weight:f.properties.event.includes('Warning')?3:2,fillColor:alertColor[f.properties.event]||'#ff6b6b',fillOpacity:.15}),onEachFeature:(f,l)=>l.bindPopup(`<b>${esc(f.properties.event)}</b><br>${esc(f.properties.headline||f.properties.areaDesc||'')}`)});setStatus('alertStatus',`${fs.length} active · ${fs.filter(f=>f.geometry).length} mapped`,'ok');recomputeExposure();}catch(e){setStatus('alertStatus','unavailable','error');console.error('Alerts',e);recomputeExposure();}}
+async function loadReports(){try{const data=await getJSON(endpoints.reports,'reports');if(!data)return;state.reports=data;groups.reports.clearLayers();addGeo(groups.reports,data,{pointToLayer:(f,ll)=>L.circleMarker(ll,{radius:5,color:'#fff',weight:1,fillColor:reportColor[f.properties?.descript]||'#65b7ff',fillOpacity:.9}),onEachFeature:(f,l)=>l.bindPopup(`<b>${esc(f.properties?.descript||'Storm report')}</b><br>${esc(f.properties?.loc_desc||'')}`)});setStatus('reportStatus',`${data.features?.length||0} in 24h`,'ok');}catch(e){setStatus('reportStatus','unavailable','error');console.error('Reports',e);}}
+function maxPoly(fc,pt,prop){let best=0;for(const f of (fc||EMPTY).features||[])if(contains(f,pt))best=Math.max(best,Number(f.properties?.[prop]||0));return best;}
+function warningScore(pt){let best=0,label='';for(const f of (state.alerts||EMPTY).features||[]){if(!f.geometry||!contains(f,pt))continue;const e=f.properties?.event||'',v=alertPts[e]||0;if(v>best){best=v;label=e;}}return {best,label};}
+function recomputeExposure(){if(!state.counties)return;groups.exposure.clearLayers();state.rankMarkers.clear();const rows=[];for(const f of state.counties.features||[]){const p=f.properties||{};const lat=Number(p.CENTLAT),lon=Number(p.CENTLON);if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;const pt=turf.point([lon,lat]);const cat=maxPoly(state.cat,pt,'dn'),torn=maxPoly(state.tor,pt,'dn'),aw=warningScore(pt),pop=state.pop.get(p.GEOID)||0;const popPts=pop?Math.min(15,3*Math.log10(pop)):0;const score=Math.min(100,(catPts[cat]||0)+Math.min(12,torn/5)+aw.best+popPts);if(score<25)continue;rows.push({key:p.GEOID,name:p.NAME||p.GEOID,pop,score,cat,torn,alert:aw.label,lat,lon,feature:f});}rows.sort((a,b)=>b.score-a.score||b.pop-a.pop);renderRank(rows.slice(0,12));}
+function renderRank(rows){const body=document.getElementById('rankBody');if(!rows.length){body.innerHTML='<tr><td colspan="4" class="tiny">No counties currently exceed the screening threshold.</td></tr>';return;}body.innerHTML=rows.map((x,i)=>`<tr data-key="${esc(x.key)}"><td>${i+1}</td><td><b>${esc(x.name)}</b><br><span class="tiny">${esc(catLabel[x.cat]||'No SPC risk')}${x.alert?' · '+esc(x.alert):''}</span></td><td>${x.pop?Math.round(x.pop/1000).toLocaleString()+'k':'n/a'}</td><td><b>${x.score.toFixed(0)}</b></td></tr>`).join('');for(const x of rows){const fill=x.score>=75?'#ff4242':x.score>=55?'#ff9f43':'#ffd45a';const layer=L.geoJSON(x.feature,{style:{color:fill,weight:2,fillColor:fill,fillOpacity:.14}}).addTo(groups.exposure).bindPopup(`<b>${esc(x.name)}</b><br>Derived score: ${x.score.toFixed(0)}/100<br>Population: ${x.pop?x.pop.toLocaleString():'unavailable'}<br>SPC: ${esc(catLabel[x.cat]||'none')}<br>Tornado probability: ${x.torn||0}%<br>Alert at internal point: ${esc(x.alert||'none')}`);state.rankMarkers.set(x.key,{lat:x.lat,lon:x.lon,layer});}body.querySelectorAll('tr[data-key]').forEach(tr=>tr.onclick=()=>{const m=state.rankMarkers.get(tr.dataset.key);if(m){map.flyTo([m.lat,m.lon],7);setTimeout(()=>m.layer.openPopup(),700);}});}
+function toggle(id,g){document.getElementById(id).onchange=e=>e.target.checked?g.addTo(map):map.removeLayer(g);}toggle('toggleCat',groups.cat);toggle('toggleTor',groups.tor);toggle('toggleAlerts',groups.alerts);toggle('toggleReports',groups.reports);toggle('toggleExposure',groups.exposure);
+L.control.layers({'OpenStreetMap':osm},{'SPC categorical':groups.cat,'SPC tornado probability':groups.tor,'NWS alerts':groups.alerts,'Storm reports':groups.reports,'Derived county exposure':groups.exposure}).addTo(map);
+function clock(){const xs=Object.values(state.last).filter(Boolean);document.getElementById('updatedLine').textContent='Last checked: '+(xs.length?new Date(Math.max(...xs)).toLocaleString():'waiting for first successful load');}setInterval(clock,1000);
+function guarded(fn){if(!document.hidden&&navigator.onLine)fn();}
+loadCounties();setTimeout(loadPopulation,250);setTimeout(loadSPC,500);setTimeout(loadAlerts,900);setTimeout(loadReports,1300);
+setInterval(()=>guarded(loadAlerts),120000);setInterval(()=>guarded(loadSPC),900000);setInterval(()=>guarded(loadReports),1800000);window.addEventListener('resize',()=>map.invalidateSize(false));
 </script>
 </body>
 </html>
