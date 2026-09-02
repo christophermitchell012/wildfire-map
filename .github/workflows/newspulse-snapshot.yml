@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/newspulse-snapshot.yml'
       - 'scripts/newspulse_snapshot.py'
+      - 'scripts/newspulse_filter.py'
   schedule:
     - cron: '7,37 * * * *'
 
@@ -26,6 +27,8 @@ jobs:
           fetch-depth: 0
       - name: Build NewsPulse from GDELT lastupdate raw files
         run: python scripts/newspulse_snapshot.py
+      - name: Remove events without verified article links
+        run: python scripts/newspulse_filter.py
       - name: Commit snapshot if changed
         run: |
           if git diff --quiet -- daily-maps/data/newspulse.json daily-maps/data/newspulse-state.json; then
