@@ -1,41 +1,54 @@
-import csv, io, json, math, os, re, time, urllib.parse, urllib.request, zipfile
+import csv, hashlib, io, json, math, os, re, time, urllib.parse, urllib.request, zipfile
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
-# GDELT GKG rows occasionally contain individual tab-delimited fields larger than
-# Python's default 128 KiB CSV parser limit. Keep a generous but bounded ceiling.
 csv.field_size_limit(10_000_000)
 
 LASTUPDATE = 'https://data.gdeltproject.org/gdeltv2/lastupdate.txt'
 STATE_PATH = 'daily-maps/data/newspulse-state.json'
 OUT_PATH = 'daily-maps/data/newspulse.json'
-USER_AGENT = 'MitchellCo-NewsPulse/4.1 (+https://christophermitchell012.github.io/wildfire-map/)'
+USER_AGENT = 'MitchellCo-NewsPulse/5.0 (+https://christophermitchell012.github.io/wildfire-map/)'
 KEEP_HOURS = 48
 MAX_LOCATIONS_PER_TOPIC = 600
 MAX_OUTPUT_PER_TOPIC = 200
-PROXIMITY_CHARS = 300
-STATE_VERSION = 4
+PROXIMITY_CHARS = 150
+LEDE_CHARS = 1500
+STATE_VERSION = 5
+ALLOWED_LOCATION_TYPES = {'3', '4'}  # US state/country centroids (1/2) are too coarse.
+MENTION_MIN_CONFIDENCE = 60
+MAX_MENTION_URLS = 50
 
-# Deliberately avoid generic terms such as HEALTH, MEDICAL, ECON and BUSINESS.
-# Those broad GKG themes caused unrelated articles to be attached to topic/location dots.
-TOPIC_THEME_TERMS = {
-    'unrest': ('PROTEST', 'RIOT', 'DEMONSTRAT', 'CIVIL_UNREST', 'LABOR_STRIKE'),
-    'violence': ('TERROR', 'SHOOT', 'BOMB', 'EXPLOS', 'ARMEDCONFLICT', 'MASS_VIOLENCE'),
-    'transport': ('AVIATION', 'AIRPORT', 'AIRLINE', 'DERAIL', 'TRAIN_CRASH', 'PLANE_CRASH', 'ROAD_CLOS', 'TRAFFIC_ACCIDENT'),
-    'health': ('DISEASE', 'OUTBREAK', 'EPIDEMIC', 'PANDEMIC', 'INFECT', 'COMMUNICABLE', 'VIRUS', 'INFLUENZA', 'MEASLES', 'MPOX', 'CHOLERA', 'EBOLA', 'DENGUE', 'MALARIA', 'SALMONELLA', 'LISTERIA', 'E_COLI'),
-    'economy': ('LAYOFF', 'BANKRUPT', 'UNEMPLOY', 'RECESSION', 'PLANT_CLOS', 'FACTORY_CLOS', 'JOB_LOSS'),
+# GKG theme names are taxonomy identifiers, not prose. Match token-shaped theme names
+# rather than arbitrary substrings so e.g. TAX_TERROR_GROUP_HAMAS does not become an
+# event merely because the identifier contains TERROR.
+TOPIC_THEME_PATTERNS = {
+    'unrest': re.compile(r'(?:^|_)(?:PROTEST[A-Z]*|RIOT[A-Z]*|DEMONSTRAT[A-Z]*|CIVIL_UNREST|LABOR_STRIKE)(?:_|$)'),
+    'violence': re.compile(r'(?:^|_)(?:SHOOT[A-Z]*|ARMEDCONFLICT|MASS_VIOLENCE|TERROR_ATTACK[A-Z]*|BOMBING[A-Z]*|EXPLOSION[A-Z]*)(?:_|$)'),
+    'transport': re.compile(r'(?:^|_)(?:AVIATION|AIRPORT|AIRLINE|DERAIL[A-Z]*|TRAIN_CRASH|PLANE_CRASH|ROAD_CLOS[A-Z]*|TRAFFIC_ACCIDENT)(?:_|$)'),
+    'health': re.compile(r'(?:^|_)(?:DISEASE[A-Z]*|OUTBREAK[A-Z]*|EPIDEMIC[A-Z]*|PANDEMIC[A-Z]*|INFECT[A-Z]*|COMMUNICABLE[A-Z]*|VIRUS[A-Z]*|INFLUENZA|MEASLES|MPOX|CHOLERA|EBOLA|DENGUE|MALARIA|SALMONELLA|LISTERIA|E_COLI)(?:_|$)'),
+    'economy': re.compile(r'(?:^|_)(?:LAYOFF[A-Z]*|BANKRUPT[A-Z]*|UNEMPLOY[A-Z]*|RECESSION[A-Z]*|PLANT_CLOS[A-Z]*|FACTORY_CLOS[A-Z]*|JOB_LOSS[A-Z]*)(?:_|$)'),
 }
 EVENT_ROOT_TOPIC = {'14': 'unrest', '18': 'violence', '19': 'violence', '20': 'violence'}
 
-# Disease/outbreak is intentionally high precision. GKG theme proximity alone can still
-# associate a secondary disease theme with an unrelated location/article. Require the
-# article URL itself to carry disease/outbreak evidence before exposing it on this layer.
-HEALTH_URL_RE = re.compile(
-    r'(?:disease|outbreak|epidemic|pandemic|infect(?:ion|ed|ious)?|virus|viral|covid|'
-    r'flu|influenza|measles|mpox|cholera|ebola|dengue|malaria|salmonella|listeria|'
-    r'e[-_]?coli|rabies|rabid|west[-_]?nile|bird[-_]?flu|h5n1|diphtheria|screwworm)',
+# URL evidence is the second independent signal for a link. Normalize punctuation to
+# spaces before matching, so word boundaries behave as intended: "flu" no longer matches
+# influencer/influence/affluent/superfluous/fluke and "viral" is not a health keyword.
+TOPIC_URL_RE = {
+    'unrest': re.compile(r'\b(?:protest(?:s|er|ers|ing)?|riot(?:s|ing)?|demonstration(?:s)?|strike(?:s|rs)?|unrest)\b', re.I),
+    'violence': re.compile(r'\b(?:shooting(?:s)?|shot|gunfire|gunman|attack(?:s|ed)?|bomb(?:ing|ings|s)?|explosion(?:s)?|blast(?:s)?|massacre|terrorism|terrorist(?:s)?)\b', re.I),
+    'transport': re.compile(r'\b(?:crash(?:es|ed)?|collision(?:s)?|derail(?:ed|ment|ments)?|airport|airline|flight(?:s)?|aviation|traffic|road closure|train)\b', re.I),
+    'health': re.compile(r'\b(?:disease|outbreak(?:s)?|epidemic|pandemic|infection(?:s)?|infected|virus(?:es)?|covid|flu|influenza|measles|mpox|cholera|ebola|dengue|malaria|salmonella|listeria|e coli|rabies|rabid|west nile|bird flu|h5n1|diphtheria|screwworm)\b', re.I),
+    'economy': re.compile(r'\b(?:layoff(?:s)?|job cuts?|job losses|bankrupt(?:cy)?|unemployment|recession|plant closure|factory closure)\b', re.I),
+}
+
+# Hub pages, live blogs, tags and category feeds routinely mention several unrelated
+# places/events. They are useful browsing pages but unsafe story identities for map dots.
+LOW_QUALITY_PATH_RE = re.compile(
+    r'(?:/(?:hub|tag|tags|category|categories|topic|topics|live)(?:/|$)|'
+    r'\b(?:live[-_/ ]?updates?|live[-_/ ]?blog|liveblog|breaking[-_/ ]?news[-_/ ]?live)\b)',
     re.I,
 )
+TRACKING_QUERY_PREFIXES = ('utm_', 'fbclid', 'gclid', 'mc_', 'ref')
 
 
 def request_bytes(url, attempts=3, timeout=45):
@@ -72,8 +85,6 @@ def parse_lastupdate(text):
     required = {'export.csv', 'mentions.csv', 'gkg.csv'}
     if not required <= files.keys():
         raise RuntimeError('lastupdate.txt did not contain the expected export, mentions, and GKG files')
-    # GDELT's three feeds can advance at slightly different times. Use the oldest latest
-    # timestamp so we only request 15-minute batches that should exist for all three feeds.
     safe_latest_ts = min(timestamps[k] for k in required)
     return safe_latest_ts, files, timestamps
 
@@ -109,19 +120,52 @@ def domain(url):
         return ''
 
 
-def topic_url_evidence(topic, url):
-    if topic != 'health':
-        return True
+def canonical_url(url):
     try:
-        text = urllib.parse.unquote(url).lower()
+        p = urllib.parse.urlsplit(url.strip())
+        if p.scheme not in ('http', 'https') or not p.netloc:
+            return ''
+        query = []
+        for k, v in urllib.parse.parse_qsl(p.query, keep_blank_values=True):
+            kl = k.lower()
+            if any(kl == prefix or kl.startswith(prefix) for prefix in TRACKING_QUERY_PREFIXES):
+                continue
+            query.append((k, v))
+        path = re.sub(r'/+', '/', p.path or '/')
+        return urllib.parse.urlunsplit((p.scheme.lower(), p.netloc.lower(), path, urllib.parse.urlencode(query), ''))
     except Exception:
-        text = str(url).lower()
-    return bool(HEALTH_URL_RE.search(text))
+        return ''
+
+
+def url_story_id(url):
+    c = canonical_url(url) or url
+    return 'url:' + hashlib.sha1(c.encode('utf-8', errors='ignore')).hexdigest()[:20]
+
+
+def is_low_quality_url(url):
+    try:
+        p = urllib.parse.urlsplit(urllib.parse.unquote(url))
+        text = (p.path or '/') + ('?' + p.query if p.query else '')
+    except Exception:
+        text = str(url)
+    return bool(LOW_QUALITY_PATH_RE.search(text))
+
+
+def topic_url_evidence(topic, url):
+    if topic not in TOPIC_URL_RE or is_low_quality_url(url):
+        return False
+    try:
+        p = urllib.parse.urlsplit(urllib.parse.unquote(url))
+        text = f'{p.path} {p.query}'
+    except Exception:
+        text = str(url)
+    text = re.sub(r'[^a-zA-Z0-9]+', ' ', text).strip().lower()
+    return bool(TOPIC_URL_RE[topic].search(text))
 
 
 def classify_theme(name):
-    u = name.upper()
-    return [topic for topic, needles in TOPIC_THEME_TERMS.items() if any(n in u for n in needles)]
+    u = (name or '').strip().upper()
+    return [topic for topic, pattern in TOPIC_THEME_PATTERNS.items() if pattern.search(u)]
 
 
 def parse_themes(field):
@@ -147,34 +191,42 @@ def parse_locations(field):
     out = []
     for block in (field or '').split(';'):
         p = block.split('#')
-        if len(p) < 7:
+        # GKG V2Locations is LocationType#FullName#CountryCode#ADM1Code#ADM2Code#Lat#Long#FeatureID#CharOffset.
+        if len(p) < 9 or p[0].strip() not in ALLOWED_LOCATION_TYPES:
             continue
         lat, lon = safe_float(p[5]), safe_float(p[6])
         if lat is None or lon is None or not (-90 <= lat <= 90 and -180 <= lon <= 180):
             continue
+        try:
+            off = int(p[8])
+        except Exception:
+            continue
         name = (p[1] or 'Mapped location').strip()
-        off = None
-        if len(p) >= 9:
-            try:
-                off = int(p[-1])
-            except Exception:
-                pass
-        out.append((name, lat, lon, off))
+        out.append((name, lat, lon, off, p[0].strip()))
     return out
 
 
-def loc_key(name, lat, lon):
-    return f'{name.lower()}|{lat:.2f}|{lon:.2f}'
+def loc_key(name, lat, lon, story_id=''):
+    # A story/event is the primary identity. This stops a location bucket from pooling
+    # alphabetically early links from unrelated stories that merely share a city/topic.
+    if story_id:
+        return story_id
+    return f'loc:{name.lower()}|{lat:.2f}|{lon:.2f}'
 
 
-def add_obs(bucket, topic, name, lat, lon, url, source_domain, count=1, event_count=0):
-    k = loc_key(name, lat, lon)
+def add_obs(bucket, topic, name, lat, lon, url, source_domain, count=1, event_count=0, story_id=''):
+    k = loc_key(name, lat, lon, story_id)
     x = bucket[topic].setdefault(k, {
-        'name': name, 'lat': round(lat, 5), 'lon': round(lon, 5),
-        'urls': set(), 'domains': set(), 'event_count': 0
+        'story_id': story_id,
+        'name': name,
+        'lat': round(lat, 5),
+        'lon': round(lon, 5),
+        'urls': set(),
+        'domains': set(),
+        'event_count': 0,
     })
     if url:
-        x['urls'].add(url)
+        x['urls'].add(canonical_url(url) or url)
     if source_domain:
         x['domains'].add(source_domain)
     if not url:
@@ -184,75 +236,113 @@ def add_obs(bucket, topic, name, lat, lon, url, source_domain, count=1, event_co
 
 
 def parse_gkg(url, bucket):
-    seen = set()
     for row in read_zip_rows(url):
         if len(row) < 11:
             continue
-        doc_url = row[4].strip() if len(row) > 4 else ''
-        if not doc_url.startswith(('http://', 'https://')):
+        doc_url = canonical_url(row[4].strip() if len(row) > 4 else '')
+        if not doc_url:
             continue
         src = (row[3].strip().lower() if len(row) > 3 else '') or domain(doc_url)
         themes = parse_themes(row[8] if len(row) > 8 else '')
         locs = parse_locations(row[10] if len(row) > 10 else '')
-        if not themes or not locs:
+        if not themes or not locs or is_low_quality_url(doc_url):
             continue
-        for topic, toff, _theme_name in themes:
+
+        # One document may contain several occurrences of a theme and several places.
+        # Pick only the best theme/location pair for each (URL, topic), rather than
+        # emitting a dot for every occurrence and spraying one URL across the map.
+        best_by_topic = {}
+        for topic, toff, theme_name in themes:
+            if toff is None or toff < 0 or toff > LEDE_CHARS:
+                continue
             if not topic_url_evidence(topic, doc_url):
                 continue
-            if toff is None:
-                continue
-            with_offsets = [l for l in locs if l[3] is not None]
-            if not with_offsets:
-                continue
-            nearest = min(with_offsets, key=lambda l: abs(l[3] - toff))
+            nearest = min(locs, key=lambda l: abs(l[3] - toff))
             distance = abs(nearest[3] - toff)
             if distance > PROXIMITY_CHARS:
                 continue
-            name, lat, lon, _ = nearest
-            dedupe = (topic, doc_url, round(lat, 2), round(lon, 2))
-            if dedupe in seen:
-                continue
-            seen.add(dedupe)
-            add_obs(bucket, topic, name, lat, lon, doc_url, src)
+            candidate = (distance, toff, nearest, theme_name)
+            if topic not in best_by_topic or candidate[:2] < best_by_topic[topic][:2]:
+                best_by_topic[topic] = candidate
+
+        story_id = url_story_id(doc_url)
+        for topic, (_distance, _toff, nearest, _theme_name) in best_by_topic.items():
+            name, lat, lon, _loff, _loc_type = nearest
+            add_obs(bucket, topic, name, lat, lon, doc_url, src, story_id=story_id)
 
 
 def parse_events(url):
     events = {}
     for row in read_zip_rows(url):
-        if len(row) < 60:
+        # GDELT Events 2.0 export has 61 columns, ending with SOURCEURL at index 60.
+        if len(row) < 61:
             continue
         event_id = row[0].strip()
-        root = row[28].strip() if len(row) > 28 else ''
+        root = row[28].strip()
         topic = EVENT_ROOT_TOPIC.get(root)
         if not topic:
             continue
-        lat, lon = safe_float(row[-5]), safe_float(row[-4])
+        action_geo_type = row[51].strip()
+        if action_geo_type not in ALLOWED_LOCATION_TYPES:
+            continue
+        lat, lon = safe_float(row[56]), safe_float(row[57])
         if lat is None or lon is None or not (-90 <= lat <= 90 and -180 <= lon <= 180):
             continue
-        name = (row[-9].strip() if len(row) >= 9 else '') or 'Mapped event location'
-        source_url = row[-1].strip()
-        events[event_id] = {'topic': topic, 'name': name, 'lat': lat, 'lon': lon, 'url': source_url}
+        name = row[52].strip() or 'Mapped event location'
+        source_url = canonical_url(row[60].strip())
+        events[event_id] = {
+            'topic': topic,
+            'name': name,
+            'lat': lat,
+            'lon': lon,
+            'url': source_url,
+            'story_id': 'event:' + event_id,
+        }
     return events
 
 
 def parse_mentions(url, events, bucket):
     mention_urls = defaultdict(set)
     for row in read_zip_rows(url):
-        if len(row) < 6:
+        # Mentions V2: InRawText=index 10, Confidence=index 11.
+        if len(row) < 12:
             continue
         event_id = row[0].strip()
         if event_id not in events:
             continue
-        ident = row[5].strip()
-        if ident.startswith(('http://', 'https://')):
+        try:
+            confidence = int(float(row[11]))
+        except Exception:
+            continue
+        if confidence < MENTION_MIN_CONFIDENCE or row[10].strip() != '1':
+            continue
+        ident = canonical_url(row[5].strip())
+        if not ident:
+            continue
+        topic = events[event_id]['topic']
+        if topic_url_evidence(topic, ident):
             mention_urls[event_id].add(ident)
+
     for event_id, ev in events.items():
-        urls = mention_urls.get(event_id) or ({ev['url']} if ev['url'] else set())
+        urls = sorted(mention_urls.get(event_id, set()))
+        if not urls and ev['url'] and topic_url_evidence(ev['topic'], ev['url']):
+            urls = [ev['url']]
+        urls = urls[:MAX_MENTION_URLS]
+
         if urls:
-            for u in list(urls)[:50]:
-                add_obs(bucket, ev['topic'], ev['name'], ev['lat'], ev['lon'], u, domain(u), event_count=1)
+            # The event is counted once, regardless of how many qualifying mentions link it.
+            for i, u in enumerate(urls):
+                add_obs(
+                    bucket, ev['topic'], ev['name'], ev['lat'], ev['lon'],
+                    u, domain(u), event_count=1 if i == 0 else 0,
+                    story_id=ev['story_id'],
+                )
         else:
-            add_obs(bucket, ev['topic'], ev['name'], ev['lat'], ev['lon'], '', '', count=1, event_count=1)
+            # Keep the structured event without inventing or attaching a weak URL.
+            add_obs(
+                bucket, ev['topic'], ev['name'], ev['lat'], ev['lon'],
+                '', '', count=1, event_count=1, story_id=ev['story_id'],
+            )
 
 
 def load_state():
@@ -263,14 +353,17 @@ def load_state():
             return s
     except Exception:
         pass
-    return {'version': STATE_VERSION, 'processed': [], 'locations': {k: {} for k in TOPIC_THEME_TERMS}}
+    return {'version': STATE_VERSION, 'processed': [], 'locations': {k: {} for k in TOPIC_THEME_PATTERNS}}
 
 
 def append_batch(state, ts, bucket):
-    for topic, locs in bucket.items():
+    for topic, stories in bucket.items():
         store = state['locations'].setdefault(topic, {})
-        for k, x in locs.items():
-            rec = store.setdefault(k, {'name': x['name'], 'lat': x['lat'], 'lon': x['lon'], 'bins': {}})
+        for k, x in stories.items():
+            rec = store.setdefault(k, {
+                'story_id': x.get('story_id', ''),
+                'name': x['name'], 'lat': x['lat'], 'lon': x['lon'], 'bins': {}
+            })
             rec['bins'][ts] = {
                 'count': len(x['urls']) + int(x.get('extra_count', 0)),
                 'domains': sorted(x['domains'])[:30],
@@ -300,7 +393,11 @@ def prune_state(state, latest_dt):
         for k in dead:
             del store[k]
         if len(store) > MAX_LOCATIONS_PER_TOPIC:
-            ranked = sorted(store.items(), key=lambda kv: sum(b.get('count', 0) for b in kv[1].get('bins', {}).values()), reverse=True)
+            ranked = sorted(
+                store.items(),
+                key=lambda kv: sum(b.get('count', 0) for b in kv[1].get('bins', {}).values()),
+                reverse=True,
+            )
             state['locations'][topic] = dict(ranked[:MAX_LOCATIONS_PER_TOPIC])
 
 
@@ -325,15 +422,25 @@ def build_window(state, latest_dt, hours):
                     cur_count += b.get('count', 0)
                     event_count += b.get('event_count', 0)
                     domains.update(b.get('domains', []))
-                    for u in b.get('links', []):
+                    for u in sorted(b.get('links', [])):
                         if u not in links and len(links) < 5:
                             links.append(u)
             if cur_count <= 0:
                 continue
             common = {'name': rec['name'], 'lat': rec['lat'], 'lon': rec['lon']}
-            cur_rows.append({**common, 'count': cur_count, 'domains': sorted(domains)[:20], 'links': [{'href': u, 'text': domain(u) or 'article'} for u in links], 'event_count': event_count})
+            cur_rows.append({
+                **common,
+                'count': cur_count,
+                'domains': sorted(domains)[:20],
+                'links': [{'href': u, 'text': domain(u) or 'article'} for u in links],
+                'event_count': event_count,
+            })
             base_rows.append({**common, 'count': base_count})
-        order = sorted(range(len(cur_rows)), key=lambda i: (cur_rows[i]['count'], len(cur_rows[i]['domains']), cur_rows[i].get('event_count', 0)), reverse=True)[:MAX_OUTPUT_PER_TOPIC]
+        order = sorted(
+            range(len(cur_rows)),
+            key=lambda i: (cur_rows[i]['count'], len(cur_rows[i]['domains']), cur_rows[i].get('event_count', 0)),
+            reverse=True,
+        )[:MAX_OUTPUT_PER_TOPIC]
         result[topic] = {'current': [cur_rows[i] for i in order], 'baseline': [base_rows[i] for i in order]}
     return result
 
@@ -345,9 +452,6 @@ def main():
     state = load_state()
     errors, processed_now = [], []
 
-    # Process the latest four complete 15-minute slots so a delayed 30-minute Action
-    # does not miss a batch. "Complete" means all three GDELT feeds have advanced to
-    # at least this timestamp, avoiding transient 404s from a faster feed leading the rest.
     for minutes_back in (45, 30, 15, 0):
         dt = latest_dt - timedelta(minutes=minutes_back)
         ts = dt.strftime('%Y%m%d%H%M%S')
@@ -361,8 +465,6 @@ def main():
             append_batch(state, ts, bucket)
             processed_now.append(ts)
         except urllib.error.HTTPError as e:
-            # A historical slot can occasionally be absent upstream. Keep the prior
-            # rolling state and report a real gap, but do not manufacture data.
             errors.append(f'{ts}: HTTP {e.code}')
         except Exception as e:
             errors.append(f'{ts}: {type(e).__name__}: {e}')
@@ -382,7 +484,12 @@ def main():
         'processed_now': processed_now,
         'rolling_history_hours': round(min(KEEP_HOURS, warm_hours), 2),
         'feed_timestamps': feed_timestamps,
-        'method': 'Strict GKG topic themes with <=300-character theme/location proximity; disease/outbreak also requires disease evidence in the article URL; structured CAMEO event locations and Mentions URLs; 48h state retained incrementally.'
+        'method': (
+            'Story-scoped GDELT mapping: one best city-level theme/location pair per URL/topic; '
+            '<=150-character proximity within the first 1,500 characters; topic evidence required in '
+            'article URL; hub/live/tag/category URLs rejected; Events require ActionGeo type 3/4; '
+            'Mentions require Confidence>=60 and InRawText=1; each structured event counted once.'
+        ),
     }
     with open(STATE_PATH, 'w', encoding='utf-8') as f:
         json.dump(state, f, ensure_ascii=False, separators=(',', ':'))
