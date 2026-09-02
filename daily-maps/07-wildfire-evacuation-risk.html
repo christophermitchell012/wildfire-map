@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-8SVEH8WD1R"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-8SVEH8WD1R');
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EvacWatch | Wildfire Evacuation Risk</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{color-scheme:dark;--bg:#101315;--panel:#171b1e;--card:#20262a;--line:#394148;--text:#f6f8f9;--muted:#9eabb3;--fire:#ff5a36;--warn:#ffbf3f;--road:#d7d7d7}
+*{box-sizing:border-box}html,body{height:100%;margin:0}body{font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+main{display:grid;grid-template-columns:minmax(320px,395px) 1fr;height:100%}aside{overflow:auto;background:var(--panel);border-right:1px solid var(--line);padding:14px 15px 34px}#map{height:100%;min-height:460px}
+h1{font-size:18px;margin:0}.sub,.small,.status,.sources{font-size:11.5px;color:var(--muted)}.sub{margin:5px 0 13px}.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:9px;margin:8px 0}.row{display:grid;grid-template-columns:1fr auto;gap:8px;padding:4px 0;font-size:12px}.ok{color:#b8efc4}.error{color:#ff9c9c}.layer{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:12.5px}.sw{width:18px;height:10px;display:inline-block;border-radius:2px}.rank{width:100%;border-collapse:collapse;font-size:11px}.rank th{color:var(--muted);text-align:left;padding:5px 4px;border-bottom:1px solid var(--line)}.rank td{padding:6px 4px;border-bottom:1px solid #30383e}.rank tr[data-key]{cursor:pointer}.rank tr[data-key]:hover{background:#263039}.formula{font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;background:#111719;border:1px solid var(--line);border-radius:7px;padding:8px}.sources a{color:#9ccaff}.copy{color:#7d878d;font-size:11px;margin-top:15px}.leaflet-popup-content{font:12px/1.45 system-ui;min-width:245px}.leaflet-control-layers{background:#171b1e;color:#f6f8f9}
+@media(max-width:820px){main{grid-template-columns:1fr;height:auto}aside{max-height:47vh;border-right:0;border-bottom:1px solid var(--line)}#map{height:53vh}}
+</style>
+</head>
+<body>
+<main><aside>
+<h1>EvacWatch: Wildfire Evacuation Risk</h1>
+<div class="sub">Current fire perimeter proximity + population + social vulnerability + fire-weather context. This is a <b>non-official screening map</b>, not an evacuation order, route planner, or prediction of fire spread.</div>
+<div class="card">
+<div class="row"><span>NIFC current perimeters</span><b id="fireStatus">loading…</b></div>
+<div class="row"><span>NWS fire-weather alerts</span><b id="alertStatus">loading…</b></div>
+<div class="row"><span>CDC county context</span><b id="countyStatus">loading…</b></div>
+<div class="row"><span>Road access context</span><b id="roadStatus">loading…</b></div>
+<div class="status" id="checked">Last successful live load: waiting…</div>
+</div>
+<div class="card"><b>Layers</b>
+<label class="layer"><input id="tFire" type="checkbox" checked><span class="sw" style="background:#ff5a3666;border:2px solid var(--fire)"></span>Current NIFC wildfire perimeters</label>
+<label class="layer"><input id="tAlerts" type="checkbox" checked><span class="sw" style="background:#ffbf3f33;border:2px dashed var(--warn)"></span>NWS Red Flag / Fire Weather Watch</label>
+<label class="layer"><input id="tRisk" type="checkbox" checked><span class="sw" style="background:#ff744a55;border:1px solid #ff744a"></span>Derived county evacuation concern</label>
+<label class="layer"><input id="tRoads" type="checkbox"><span class="sw" style="background:var(--road)"></span>Census primary + secondary roads</label>
+</div>
+<div class="card small"><b>What the fusion means</b><br>A county ranks higher when its representative interior point is close to a current mapped wildfire, the nearby incident is large and less contained, and the county has more people or higher CDC Social Vulnerability Index. NWS fire-weather alerts add context where an official alert polygon covers the county point. Road lines are context only: this map does not know closures, capacity, direction of travel, or official evacuation routes.</div>
+<div style="font-size:13px;font-weight:700;margin:13px 0 5px">Highest derived evacuation concern</div>
+<table class="rank"><thead><tr><th>#</th><th>County</th><th>Nearest fire</th><th>Score</th></tr></thead><tbody id="rankBody"><tr><td colspan="4" class="small">Waiting for fire and county layers…</td></tr></tbody></table>
+<div class="card formula"><b>Derived score, 0–100</b><br>distance: 45 / 35 / 25 / 15 pts at ≤2 / 10 / 25 / 50 km<br>size: min(15, 3 × log10(acres + 1))<br>uncontained: 15 × (1 − containment/100)<br>SVI: 15 × overall SVI rank<br>population: min(10, 2 × log10(population))<br>NWS Red Flag / Fire Weather Watch at county point: +10<br>cap at 100. County geometry is <b>not</b> treated as uniformly exposed; distance is measured from a representative interior point.</div>
+<div class="card sources"><b>Sources & refresh</b><br><br>
+<a href="https://services3.arcgis.com/T4QMspbfLg3qTGWY/ArcGIS/rest/services/WFIGS_Interagency_Perimeters_Current/FeatureServer/0" target="_blank" rel="noopener">NIFC WFIGS Current Interagency Fire Perimeters</a>: anonymous ArcGIS FeatureServer, wildfire features only; checked every 10 minutes. Perimeter timestamps and incident acreage/containment are source attributes.<br><br>
+<a href="https://api.weather.gov/alerts/active" target="_blank" rel="noopener">National Weather Service Alerts API</a>: active Red Flag Warnings and Fire Weather Watches; checked every 5 minutes.<br><br>
+<a href="https://onemap.cdc.gov/onemapservices/rest/services/SVI/CDC_ATSDR_Social_Vulnerability_Index_2022_USA/FeatureServer/1" target="_blank" rel="noopener">CDC/ATSDR SVI 2022 county layer</a>: county geometry, ACS-derived population and overall SVI rank; static 2022 vintage, loaded once per session.<br><br>
+<a href="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Transportation_LargeScale/MapServer" target="_blank" rel="noopener">U.S. Census TIGERweb Transportation</a>: primary/secondary roads rendered by an anonymous public MapServer; static/current TIGERweb context, loaded only when toggled.<br><br>
+<b>Omitted:</b> national evacuation orders and road closures. No authoritative, consistently structured, anonymous nationwide browser endpoint was verified, so the map does not invent or infer official evacuation zones or closures.</div>
+<div class="copy">© 2026 MitchellCo Inc.<br>Map tiles © OpenStreetMap contributors. NIFC, NWS, CDC/ATSDR and U.S. Census data retain their own attribution and terms.</div>
+</aside><div id="map"></div></main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@7.2.0/turf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/esri-leaflet@3.0.19/dist/esri-leaflet.js"></script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),EMPTY={type:'FeatureCollection',features:[]};
+const map=L.map('map',{preferCanvas:true,minZoom:3}).setView([39,-111],5);
+const base=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+const fireLayer=L.geoJSON(null,{style:{color:'#ff5a36',weight:2,fillColor:'#ff5a36',fillOpacity:.18},onEachFeature:(f,l)=>{const p=f.properties||{},nm=p.poly_IncidentName||'Wildfire',ac=num(p.attr_IncidentSize??p.poly_GISAcres),ct=num(p.attr_PercentContained),dt=p.poly_DateCurrent||p.poly_PolygonDateTime;l.bindPopup(`<b>${esc(nm)}</b><br>Incident size: ${ac==null?'n/a':Math.round(ac).toLocaleString()+' acres'}<br>Containment: ${ct==null?'n/a':ct.toFixed(0)+'%'}<br>Perimeter current: ${fmt(dt)}<br><span class="small">Official NIFC/WFIGS mapped perimeter; perimeter completeness/timing varies by incident.</span>`);}}).addTo(map);
+const alertLayer=L.geoJSON(null,{style:{color:'#ffbf3f',weight:2,dashArray:'7 5',fillColor:'#ffbf3f',fillOpacity:.06},onEachFeature:(f,l)=>{const p=f.properties||{};l.bindPopup(`<b>${esc(p.event||'NWS fire-weather alert')}</b><br>${esc(p.headline||p.areaDesc||'')}<br>Expires: ${fmt(p.expires)}<br><span class="small">Official NWS alert.</span>`);}}).addTo(map);
+const riskLayer=L.layerGroup().addTo(map);let roadLayer=null;
+const S={fires:EMPTY,alerts:EMPTY,counties:EMPTY,last:{},busy:new Set(),rank:new Map()};
+const FIRE='https://services3.arcgis.com/T4QMspbfLg3qTGWY/ArcGIS/rest/services/WFIGS_Interagency_Perimeters_Current/FeatureServer/0/query?where=attr_IncidentTypeCategory%3D%27WF%27&outFields=poly_IncidentName,poly_GISAcres,poly_DateCurrent,poly_PolygonDateTime,attr_IncidentSize,attr_PercentContained,attr_POOState&returnGeometry=true&outSR=4326&f=geojson';
+const ALERTS='https://api.weather.gov/alerts/active';
+const CDC='https://onemap.cdc.gov/onemapservices/rest/services/SVI/CDC_ATSDR_Social_Vulnerability_Index_2022_USA/FeatureServer/1/query';
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function num(x){const n=Number(x);return Number.isFinite(n)?n:null}function fmt(x){if(x==null||x==='')return 'n/a';const n=Number(x),d=Number.isFinite(n)?new Date(n):new Date(x);return Number.isNaN(d.getTime())?esc(x):d.toLocaleString()}function status(id,text,ok=true){$(id).textContent=text;$(id).className=ok?'ok':'error'}
+async function getJSON(url,key){if(S.busy.has(key))return null;S.busy.add(key);try{const r=await fetch(url,{headers:{Accept:'application/geo+json, application/json'}});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();if(j?.error)throw new Error(j.error.message||'service error');S.last[key]=Date.now();return j}finally{S.busy.delete(key)}}
+async function loadFires(){try{const j=await getJSON(FIRE,'fires');if(!j)return;S.fires=j;fireLayer.clearLayers().addData(j);status('fireStatus',`${j.features?.length||0} wildfire perimeters`);recompute()}catch(e){status('fireStatus','unavailable',false);console.error('NIFC',e);recompute()}}
+async function loadAlerts(){try{const j=await getJSON(ALERTS,'alerts');if(!j)return;const fs=(j.features||[]).filter(f=>['Red Flag Warning','Fire Weather Watch'].includes(f.properties?.event));S.alerts={type:'FeatureCollection',features:fs};alertLayer.clearLayers().addData({type:'FeatureCollection',features:fs.filter(f=>f.geometry)});status('alertStatus',`${fs.length} active · ${fs.filter(f=>f.geometry).length} mapped`);recompute()}catch(e){status('alertStatus','unavailable',false);console.error('NWS',e);recompute()}}
+async function loadCounties(){try{const all=[];for(let page=0;page<3;page++){const q=new URLSearchParams({where:'1=1',outFields:'STCNTY,COUNTY,ST_ABBR,E_TOTPOP,RPL_THEMES',returnGeometry:'true',outSR:'4326',orderByFields:'STCNTY',resultOffset:String(page*2000),resultRecordCount:'2000',f:'geojson'});const j=await getJSON(CDC+'?'+q,'county'+page);const fs=j?.features||[];all.push(...fs);if(fs.length<2000&&!j?.properties?.exceededTransferLimit)break}if(!all.length)throw new Error('No county records');S.counties={type:'FeatureCollection',features:all};status('countyStatus',`${all.length.toLocaleString()} counties · SVI 2022`);recompute()}catch(e){status('countyStatus','unavailable',false);$('rankBody').innerHTML='<tr><td colspan="4" class="small">County context unavailable; ranking cannot be calculated.</td></tr>';console.error('CDC',e)}}
+function nearestFire(pt){let best=null;for(const f of S.fires.features||[]){if(!f.geometry)continue;let km=Infinity;try{if(turf.booleanPointInPolygon(pt,f))km=0;else km=turf.pointToLineDistance(pt,turf.polygonToLine(f),{units:'kilometers'})}catch{continue}if(!best||km<best.km)best={f,km}}return best}
+function alertAt(pt){for(const f of S.alerts.features||[]){if(!f.geometry)continue;try{if(turf.booleanPointInPolygon(pt,f))return f.properties?.event||'NWS fire-weather alert'}catch{}}return ''}function dPts(km){return km<=2?45:km<=10?35:km<=25?25:km<=50?15:0}
+function recompute(){if(!S.counties.features?.length)return;riskLayer.clearLayers();S.rank.clear();const rows=[];for(const f of S.counties.features){let pt;try{pt=turf.pointOnFeature(f)}catch{continue}const near=nearestFire(pt);if(!near||near.km>50)continue;const p=f.properties||{},fp=near.f.properties||{},pop=Math.max(0,num(p.E_TOTPOP)||0),svi=Math.max(0,Math.min(1,num(p.RPL_THEMES)||0)),acres=Math.max(0,num(fp.attr_IncidentSize??fp.poly_GISAcres)||0),contained=Math.max(0,Math.min(100,num(fp.attr_PercentContained)??0)),a=alertAt(pt),score=Math.min(100,dPts(near.km)+Math.min(15,3*Math.log10(acres+1))+15*(1-contained/100)+15*svi+Math.min(10,pop?2*Math.log10(pop):0)+(a?10:0));if(score<25)continue;const key=p.STCNTY||`${p.ST_ABBR}-${p.COUNTY}`,name=`${p.COUNTY||key}, ${p.ST_ABBR||''}`,fill=score>=75?'#e3342f':score>=55?'#f27532':'#f2c94c';const layer=L.geoJSON(f,{style:{color:fill,weight:1.5,fillColor:fill,fillOpacity:.17}}).bindPopup(`<b>${esc(name)}</b><br><b>Derived evacuation concern: ${score.toFixed(0)}/100</b><br>Nearest mapped fire: ${esc(fp.poly_IncidentName||'unnamed')} · ${near.km.toFixed(1)} km<br>Fire size: ${Math.round(acres).toLocaleString()} acres · containment: ${contained.toFixed(0)}%<br>Population: ${pop.toLocaleString()} · SVI rank: ${svi.toFixed(2)}<br>NWS fire-weather alert at county point: ${esc(a||'none')}<br><span class="small">Screening estimate only. Check local authorities for evacuation orders and routes.</span>`).addTo(riskLayer);const c=pt.geometry.coordinates;S.rank.set(key,{lat:c[1],lon:c[0],layer});rows.push({key,name,fire:fp.poly_IncidentName||'unnamed',km:near.km,score})}rows.sort((a,b)=>b.score-a.score||a.km-b.km);render(rows.slice(0,15))}
+function render(rows){const b=$('rankBody');if(!rows.length){b.innerHTML='<tr><td colspan="4" class="small">No county interior points are currently within 50 km of a mapped NIFC wildfire perimeter, or a required source is unavailable.</td></tr>';return}b.innerHTML=rows.map((x,i)=>`<tr data-key="${esc(x.key)}"><td>${i+1}</td><td><b>${esc(x.name)}</b><br><span class="small">${x.km.toFixed(1)} km</span></td><td>${esc(x.fire)}</td><td><b>${x.score.toFixed(0)}</b></td></tr>`).join('');b.querySelectorAll('tr[data-key]').forEach(tr=>tr.onclick=()=>{const x=S.rank.get(tr.dataset.key);if(x){map.flyTo([x.lat,x.lon],8,{duration:.7});setTimeout(()=>x.layer.openPopup(),750)}})}
+function initRoads(){try{roadLayer=L.esri.dynamicMapLayer({url:'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Transportation_LargeScale/MapServer',layers:[0,1],opacity:.7});status('roadStatus','available · toggle to load')}catch(e){status('roadStatus','unavailable',false);console.error(e)}}function toggle(id,layer){$(id).onchange=e=>e.target.checked?layer.addTo(map):map.removeLayer(layer)}toggle('tFire',fireLayer);toggle('tAlerts',alertLayer);toggle('tRisk',riskLayer);$('tRoads').onchange=e=>{if(!roadLayer)return;if(e.target.checked){roadLayer.addTo(map);status('roadStatus','rendering Census roads')}else{map.removeLayer(roadLayer);status('roadStatus','available · toggle to load')}};
+L.control.layers({'OpenStreetMap':base},{'NIFC fire perimeters':fireLayer,'NWS fire-weather alerts':alertLayer,'Derived evacuation concern':riskLayer},{collapsed:true}).addTo(map);
+function clock(){const xs=Object.values(S.last);$('checked').textContent='Last successful live load: '+(xs.length?new Date(Math.max(...xs)).toLocaleString():'waiting…')}setInterval(clock,1000);function guarded(fn){if(!document.hidden&&navigator.onLine)fn()}
+initRoads();loadCounties();setTimeout(loadFires,500);setTimeout(loadAlerts,1000);setInterval(()=>guarded(loadAlerts),300000);setInterval(()=>guarded(loadFires),600000);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&navigator.onLine){guarded(loadFires);guarded(loadAlerts);map.invalidateSize(false)}});window.addEventListener('online',()=>{guarded(loadFires);guarded(loadAlerts)});window.addEventListener('resize',()=>map.invalidateSize(false));
+</script>
+</body></html>
