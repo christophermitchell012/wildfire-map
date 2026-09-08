@@ -1,6 +1,7 @@
 name: Daily Map Quality Gate
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
