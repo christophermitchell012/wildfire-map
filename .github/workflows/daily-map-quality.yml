@@ -7,12 +7,14 @@ on:
     paths:
       - 'daily-maps/*.html'
       - 'scripts/standardize_daily_maps.py'
+      - 'scripts/apply_browser_first_standard.py'
       - '.github/workflows/daily-map-quality.yml'
       - '.github/workflows/standardize-daily-maps.yml'
   pull_request:
     paths:
       - 'daily-maps/*.html'
       - 'scripts/standardize_daily_maps.py'
+      - 'scripts/apply_browser_first_standard.py'
 
 permissions:
   contents: read
@@ -29,8 +31,10 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate map standard and Map 07 regression safeguards
-        run: python scripts/standardize_daily_maps.py --check
+      - name: Validate map standards and regression safeguards
+        run: |
+          python scripts/standardize_daily_maps.py --check
+          python scripts/apply_browser_first_standard.py --check
 
       - name: Verify pretty-printed HTML
         run: npx --yes prettier@3.3.3 --check 'daily-maps/*.html'
@@ -43,8 +47,6 @@ jobs:
           bad = []
           for path in sorted(pathlib.Path('daily-maps').glob('[0-9][0-9]-*.html')):
               text = path.read_text(encoding='utf-8')
-              # Script elements are HTML raw-text elements. Character references such
-              # as &quot; must NOT be HTML-unescaped before JS parsing.
               scripts = re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', text, flags=re.I|re.S)
               for i, body in enumerate(scripts, 1):
                   with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f:
