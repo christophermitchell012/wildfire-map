@@ -1,78 +1,1039 @@
 <!doctype html>
 <html lang="en">
-<head>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-8SVEH8WD1R"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-8SVEH8WD1R');
-</script>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NetWatch | Internet Outage Watch</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<style>
-:root{color-scheme:dark;--bg:#0e1216;--panel:#151b20;--card:#1d252b;--line:#34404a;--text:#f4f7f9;--muted:#96a5af;--ok:#8de5aa;--warn:#ffca58;--bad:#ff705d;--blue:#5bc0ff;--violet:#c18cff}
-*{box-sizing:border-box}html,body{height:100%;margin:0}body{font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
-header{height:54px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line)}header h1{font-size:16px;margin:0}.spacer{flex:1}select,button{font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:7px;padding:5px 8px}button{cursor:pointer}
-main{display:grid;grid-template-columns:minmax(330px,410px) 1fr;height:calc(100% - 54px)}aside{overflow:auto;background:var(--panel);border-right:1px solid var(--line);padding:14px 15px 34px}#map{height:100%;min-height:480px}.question{font-size:13px;font-weight:750;margin:0 0 7px}.sub,.small,.status,.sources{font-size:11.5px;color:var(--muted)}.card{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:9px;margin:9px 0}.row{display:grid;grid-template-columns:1fr auto;gap:9px;padding:4px 0;font-size:12px}.health{font-size:10px;border:1px solid var(--line);border-radius:999px;padding:1px 6px;white-space:nowrap}.live{color:var(--ok)}.loading{color:var(--warn)}.cached{color:var(--blue)}.error{color:var(--bad)}.layer{display:flex;gap:8px;align-items:center;margin:7px 0;font-size:12.5px}.sw{width:18px;height:10px;border-radius:2px;display:inline-block;flex:none}.metricgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.metric{background:#12181c;border:1px solid var(--line);border-radius:7px;padding:7px;text-align:center}.metric b{font-size:16px;display:block}.metric span{font-size:10px;color:var(--muted)}
-.rank{width:100%;border-collapse:collapse;font-size:11px}.rank th{color:var(--muted);text-align:left;padding:5px 4px;border-bottom:1px solid var(--line)}.rank td{padding:6px 4px;border-bottom:1px solid #2d3740}.rank tr[data-key]{cursor:pointer}.rank tr[data-key]:hover{background:#263039}.score{font-weight:800}.sources a{color:#9bd2ff}.copy{color:#76838c;font-size:11px;margin-top:15px}details summary{cursor:pointer;color:#dce5ea}.leaflet-popup-content{font:12px/1.45 system-ui;min-width:265px}.leaflet-control-layers{background:#151b20;color:#f4f7f9}
-@media(max-width:840px){header{height:auto}main{grid-template-columns:1fr;height:auto}aside{max-height:48vh;border-right:0;border-bottom:1px solid var(--line)}#map{height:52vh}}
-</style>
-</head>
-<body>
-<header><h1>NetWatch: Internet Outage Watch</h1><span class="spacer"></span><label>Region <select id="region"></select></label><button id="refresh">Refresh</button></header>
-<main><aside>
-<div class="question">Where are multiple Internet measurement probes going offline at the same time?</div>
-<div class="sub">NetWatch fuses RIPE Atlas probe connectivity, ASN/network concentration and live RIPE RIS BGP activity. A disconnected probe is evidence of a lost measurement vantage point, <b>not proof of a consumer Internet outage</b>. BGP activity is independent context, not a claimed cause.</div>
-<div class="card"><b>Data health</b>
-<div class="row"><span>RIPE Atlas probes</span><span id="probeStatus" class="health loading">Loading</span></div>
-<div class="row"><span>RIPE RIS Live BGP</span><span id="bgpStatus" class="health loading">Connecting</span></div>
-<div class="status" id="checked">Probe snapshot: waiting…</div></div>
-<div class="metricgrid"><div class="metric"><b id="disc24">–</b><span>disconnects ≤24h</span></div><div class="metric"><b id="connected">–</b><span>connected sample</span></div><div class="metric"><b id="bgp5">–</b><span>BGP msgs / 5m</span></div></div>
-<div class="card"><b>Layers</b>
-<label class="layer"><input id="tDisc" type="checkbox" checked><span class="sw" style="background:var(--bad)"></span>Recently disconnected RIPE Atlas probes</label>
-<label class="layer"><input id="tConn" type="checkbox"><span class="sw" style="background:var(--blue)"></span>Connected probe sample</label>
-<label class="layer"><input id="tCluster" type="checkbox" checked><span class="sw" style="background:#ffca5844;border:1px solid var(--warn)"></span>Derived disconnect clusters</label>
-</div>
-<div style="font-size:13px;font-weight:700;margin:13px 0 5px">Highest outage-confidence signals</div>
-<table class="rank"><thead><tr><th>#</th><th>Network / area</th><th>Recent</th><th>Score</th></tr></thead><tbody id="rankBody"><tr><td colspan="4" class="small">Waiting for probe snapshot…</td></tr></tbody></table>
-<details class="card"><summary><b>How the derived score works</b></summary><div class="small" style="margin-top:8px"><b>Non-official outage-confidence score, 0–100.</b><br><br>For each ASN + ~1° geographic cell:<br><b>recent concentration</b> = min(55, 18 × ln(1 + probes disconnected in last 24h))<br><b>recency</b> = max(0, 25 × (1 − median disconnect age / 24h))<br><b>network concentration</b> = min(20, 4 × distinct disconnected probes in the same ASN/cell)<br><br>The score is a triage signal only. It does not estimate affected subscribers, outage duration, or cause. A single disconnected probe is deliberately kept low-confidence.</div></details>
-<details class="card"><summary><b>What the fused layers mean</b></summary><div class="small" style="margin-top:8px">The strongest signal is several recently disconnected probes belonging to the same ASN and geographic area. Connected probes provide local measurement context. RIPE RIS Live separately shows whether Internet routing activity is elevated, but NetWatch does not infer that a BGP burst caused a probe disconnect. Probe coordinates are intentionally obfuscated by RIPE Atlas.</div></details>
-<details class="card sources"><summary><b>Sources, refresh & limitations</b></summary><div style="margin-top:8px">
-<a href="https://atlas.ripe.net/docs/apis/rest-api-manual/authentication/anonymous-access" target="_blank" rel="noopener">RIPE Atlas API</a>: anonymous public probe reads. Selected-region probe snapshot every <b>10 minutes</b>; connected and disconnected probes are spatially bounded. RIPE Atlas intentionally offsets probe coordinates by roughly 80–400 m for privacy.<br><br>
-<a href="https://ris-live.ripe.net/manual/" target="_blank" rel="noopener">RIPE RIS Live</a>: anonymous browser WebSocket stream of BGP messages. NetWatch keeps only a rolling <b>5-minute message count</b> as routing context and reconnects with exponential backoff.<br><br>
-<b>IODA:</b> omitted in this build because a current anonymous browser endpoint was not sufficiently verified from authoritative documentation during the build. No guessed or unofficial endpoint is used.<br><br>
-<b>PeeringDB:</b> omitted from the live map to avoid broad facility downloads and anonymous API rate pressure; RIPE Atlas ASN fields provide the network-exposure dimension directly.<br><br>
-The map cannot distinguish ISP failure from probe power loss, local LAN failure, maintenance, hardware failure or other causes without independent evidence.</div></details>
-<div class="copy">© 2026 MitchellCo Inc.<br>Map tiles © OpenStreetMap contributors. RIPE Atlas and RIPE RIS data retain their respective attribution and terms.</div>
-</aside><div id="map"></div></main>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script>
-'use strict';
-const $=id=>document.getElementById(id), EMPTY=[];
-const REGIONS=[['Continental U.S.',[24.3,-125,49.6,-66.4]],['West',[31,-125,49.6,-102]],['Central',[25,-105,49.6,-87]],['East',[24.3,-90,49.6,-66.4]],['Alaska',[51,-179.9,71.8,-129]],['Hawaii',[18.7,-160.5,22.6,-154.5]]];
-const map=L.map('map',{preferCanvas:true,minZoom:3}).setView([39,-98],4),base=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
-const discLayer=L.layerGroup().addTo(map),connLayer=L.layerGroup(),clusterLayer=L.layerGroup().addTo(map);
-const S={gen:0,busy:false,probes:[],lastProbe:0,mode:'',bgp:[],ws:null,wsRetry:0,wsTimer:null,rank:new Map()};
-function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function region(){return REGIONS[+$('region').value||0]}function box(){const b=region()[1];return{s:b[0],w:b[1],n:b[2],e:b[3]}}function h(id,state,detail=''){const e=$(id);e.textContent=state+(detail?' · '+detail:'');e.className='health '+({Live:'live',Cached:'cached',Loading:'loading',Connecting:'loading',Unavailable:'error'}[state]||'')}
-function cacheKey(){return'netwatch:v1:'+region()[0]}function fmtAge(ms){const m=Math.floor(ms/60000);return m<1?'<1m':m<60?m+'m':(m/60).toFixed(1)+'h'}
-async function getJSON(url,gen){const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),12000);try{const r=await fetch(url,{signal:ctl.signal,headers:{Accept:'application/json'}});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();if(gen!==S.gen)return null;return j}finally{clearTimeout(timer)}}
-function probeURL(status,b,page=1){const q=new URLSearchParams({status:String(status),latitude__gte:b.s,latitude__lte:b.n,longitude__gte:b.w,longitude__lte:b.e,page_size:'500',page:String(page),fields:'id,geometry,status,status_since,last_connected,asn_v4,asn_v6,is_anchor,total_uptime'});return'https://atlas.ripe.net/api/v2/probes/?'+q}
-async function loadStatus(status,b,gen){let url=probeURL(status,b,1),out=[],pages=0;while(url&&pages<4){const j=await getJSON(url,gen);if(!j)return null;out.push(...(j.results||[]));url=j.next;pages++;}return out}
-async function loadProbes(){if(S.busy)return;S.busy=true;const gen=++S.gen,b=box();h('probeStatus','Loading');discLayer.clearLayers();connLayer.clearLayers();clusterLayer.clearLayers();S.rank.clear();$('rankBody').innerHTML='<tr><td colspan="4" class="small">Loading selected region…</td></tr>';map.fitBounds([[b.s,b.w],[b.n,b.e]],{padding:[8,8]});try{let d,c,mode='Live';try{[d,c]=await Promise.all([loadStatus(2,b,gen),loadStatus(1,b,gen)]);if(gen!==S.gen)return;if(!d||!c)throw new Error('stale');const snap={time:Date.now(),d,c};localStorage.setItem(cacheKey(),JSON.stringify(snap))}catch(e){const snap=JSON.parse(localStorage.getItem(cacheKey())||'null');if(!snap)throw e;d=snap.d||[];c=snap.c||[];S.lastProbe=snap.time;mode='Cached'}if(gen!==S.gen)return;S.probes=[...d,...c];if(mode==='Live')S.lastProbe=Date.now();S.mode=mode;renderProbes(d,c);h('probeStatus',mode,`${d.length} disconnected · ${c.length} connected`)}catch(e){if(gen===S.gen){h('probeStatus','Unavailable');$('rankBody').innerHTML='<tr><td colspan="4" class="small">RIPE Atlas unavailable. BGP context can still run independently.</td></tr>'}}finally{S.busy=false}}
-function pt(p){const g=p.geometry?.coordinates;if(!g||g.length<2)return null;return[g[1],g[0]]}function asn(p){return p.asn_v4||p.asn_v6||'unknown'}function since(p){return new Date(p.status_since||p.last_connected||0).getTime()||0}
-function renderProbes(d,c){const now=Date.now(),recent=d.filter(p=>since(p)&&now-since(p)<=86400000);$('disc24').textContent=recent.length;$('connected').textContent=c.length.toLocaleString();for(const p of recent){const x=pt(p);if(!x)continue;const age=now-since(p);L.circleMarker(x,{radius:p.is_anchor?6:4,color:'#ff705d',weight:1,fillColor:'#ff705d',fillOpacity:.75}).bindPopup(`<b>RIPE Atlas probe ${p.id}</b><br>Status: disconnected<br>ASN: ${esc(asn(p))}<br>Disconnected: ${fmtAge(age)} ago<br>${p.is_anchor?'Atlas anchor':'Atlas probe'}<br><span class="small">Location is intentionally obfuscated by RIPE Atlas. A probe disconnect alone is not proof of an ISP outage.</span>`).addTo(discLayer)}
-for(const p of c.slice(0,900)){const x=pt(p);if(!x)continue;L.circleMarker(x,{radius:p.is_anchor?4:2,color:'#5bc0ff',weight:.7,fillColor:'#5bc0ff',fillOpacity:.38}).bindPopup(`<b>RIPE Atlas probe ${p.id}</b><br>Status: connected<br>ASN: ${esc(asn(p))}<br><span class="small">Connected measurement vantage point; location is obfuscated.</span>`).addTo(connLayer)}
-buildClusters(recent,c)}
-function buildClusters(recent,connected){const now=Date.now(),groups=new Map(),base=new Map();for(const p of connected){const x=pt(p);if(!x)continue;const key=`${asn(p)}|${Math.floor(x[0])}|${Math.floor(x[1])}`;base.set(key,(base.get(key)||0)+1)}for(const p of recent){const x=pt(p);if(!x)continue;const key=`${asn(p)}|${Math.floor(x[0])}|${Math.floor(x[1])}`;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(p)}const rows=[];for(const[key,ps]of groups){const coords=ps.map(pt).filter(Boolean);if(!coords.length)continue;const lat=coords.reduce((a,x)=>a+x[0],0)/coords.length,lon=coords.reduce((a,x)=>a+x[1],0)/coords.length,ages=ps.map(p=>(now-since(p))/3600000).sort((a,b)=>a-b),med=ages[Math.floor(ages.length/2)],recentPts=Math.min(55,18*Math.log(1+ps.length)),recency=Math.max(0,25*(1-med/24)),concentration=Math.min(20,4*ps.length),score=Math.min(100,recentPts+recency+concentration),a=asn(ps[0]),connectedHere=base.get(key)||0;const radius=Math.max(14000,Math.min(70000,12000+ps.length*9000));const layer=L.circle([lat,lon],{radius,color:score>=70?'#ff705d':score>=45?'#ffca58':'#c18cff',weight:2,fillOpacity:.12}).bindPopup(`<b>Derived disconnect cluster</b><br>ASN: ${esc(a)}<br>Recent disconnected probes: ${ps.length}<br>Connected probes in same ASN/~1° cell: ${connectedHere}<br>Median disconnect age: ${med.toFixed(1)} h<br><b>Outage-confidence: ${score.toFixed(0)}/100</b><br><span class="small">Non-official triage signal. It does not estimate subscribers affected or establish cause.</span>`).addTo(clusterLayer);S.rank.set(key,{lat,lon,layer});rows.push({key,asn:a,n:ps.length,med,score,lat,lon})}rows.sort((a,b)=>b.score-a.score||b.n-a.n);renderRank(rows.slice(0,15))}
-function renderRank(rows){const b=$('rankBody');if(!rows.length){b.innerHTML='<tr><td colspan="4" class="small">No RIPE Atlas probes in this region disconnected within the last 24 hours.</td></tr>';return}b.innerHTML=rows.map((r,i)=>`<tr data-key="${esc(r.key)}"><td>${i+1}</td><td><b>AS${esc(r.asn)}</b><br><span class="small">~${r.lat.toFixed(1)}, ${r.lon.toFixed(1)}</span></td><td>${r.n}<br><span class="small">${r.med.toFixed(1)}h median</span></td><td class="score">${r.score.toFixed(0)}</td></tr>`).join('');b.querySelectorAll('tr[data-key]').forEach(tr=>tr.onclick=()=>{const x=S.rank.get(tr.dataset.key);if(!x)return;if(!map.hasLayer(clusterLayer))clusterLayer.addTo(map);map.flyTo([x.lat,x.lon],8,{duration:.7});map.once('moveend',()=>x.layer.openPopup());setTimeout(()=>x.layer.openPopup(),900)})}
-function connectRIS(){if(S.ws){try{S.ws.close()}catch{}}h('bgpStatus','Connecting');const ws=new WebSocket('wss://ris-live.ripe.net/v1/ws/?client=mitchellco-netwatch');S.ws=ws;ws.onopen=()=>{S.wsRetry=0;h('bgpStatus','Live','rolling 5m');ws.send(JSON.stringify({type:'ris_subscribe',data:{type:'UPDATE'}}))};ws.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.type==='ris_message'){const now=Date.now();S.bgp.push(now);S.bgp=S.bgp.filter(t=>now-t<=300000);$('bgp5').textContent=S.bgp.length.toLocaleString()}}catch{}};ws.onerror=()=>{h('bgpStatus','Unavailable','reconnecting')};ws.onclose=()=>{if(document.hidden||!navigator.onLine)return;S.wsRetry=Math.min(S.wsRetry+1,6);const delay=Math.min(60000,2000*Math.pow(2,S.wsRetry-1));clearTimeout(S.wsTimer);S.wsTimer=setTimeout(connectRIS,delay)}}
-function toggle(id,l){$(id).onchange=e=>e.target.checked?l.addTo(map):map.removeLayer(l)}toggle('tDisc',discLayer);toggle('tConn',connLayer);toggle('tCluster',clusterLayer);L.control.layers({'OpenStreetMap':base},{'Recent probe disconnects':discLayer,'Connected probe sample':connLayer,'Derived disconnect clusters':clusterLayer},{collapsed:true}).addTo(map);
-REGIONS.forEach((r,i)=>{const o=document.createElement('option');o.value=i;o.textContent=r[0];$('region').appendChild(o)});$('region').value='0';$('region').onchange=loadProbes;$('refresh').onclick=loadProbes;
-function clock(){if(!S.lastProbe){$('checked').textContent='Probe snapshot: waiting…';return}$('checked').textContent=`Probe snapshot: ${S.mode} · ${fmtAge(Date.now()-S.lastProbe)} old`}setInterval(clock,1000);
-function guarded(){if(!document.hidden&&navigator.onLine)loadProbes()}loadProbes();connectRIS();setInterval(guarded,600000);document.addEventListener('visibilitychange',()=>{if(document.hidden){if(S.ws){try{S.ws.close()}catch{}}}else if(navigator.onLine){guarded();connectRIS();map.invalidateSize(false)}});window.addEventListener('online',()=>{loadProbes();connectRIS()});window.addEventListener('offline',()=>{h('probeStatus','Cached','offline');h('bgpStatus','Unavailable','offline')});window.addEventListener('resize',()=>map.invalidateSize(false));
-</script>
-</body></html>
+  <head>
+    <!-- Google tag (gtag.js) -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-8SVEH8WD1R"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-8SVEH8WD1R");
+    </script>
+    <meta charset="utf-8" />
+    <meta name="mitchellco-map-standard" content="evacwatch-v2" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>NetWatch | Internet Outage Watch</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0e1216;
+        --panel: #151b20;
+        --card: #1d252b;
+        --line: #34404a;
+        --text: #f4f7f9;
+        --muted: #96a5af;
+        --ok: #8de5aa;
+        --warn: #ffca58;
+        --bad: #ff705d;
+        --blue: #5bc0ff;
+        --violet: #c18cff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        font:
+          14px/1.45 system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          Arial,
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      header {
+        height: 54px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        padding: 8px 14px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+      }
+      header h1 {
+        font-size: 16px;
+        margin: 0;
+      }
+      .spacer {
+        flex: 1;
+      }
+      select,
+      button {
+        font: inherit;
+        color: var(--text);
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 5px 8px;
+      }
+      button {
+        cursor: pointer;
+      }
+      main {
+        display: grid;
+        grid-template-columns: minmax(330px, 410px) 1fr;
+        height: calc(100% - 54px);
+      }
+      aside {
+        overflow: auto;
+        background: var(--panel);
+        border-right: 1px solid var(--line);
+        padding: 14px 15px 34px;
+      }
+      #map {
+        height: 100%;
+        min-height: 480px;
+      }
+      .question {
+        font-size: 13px;
+        font-weight: 750;
+        margin: 0 0 7px;
+      }
+      .sub,
+      .small,
+      .status,
+      .sources {
+        font-size: 11.5px;
+        color: var(--muted);
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        padding: 9px;
+        margin: 9px 0;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 9px;
+        padding: 4px 0;
+        font-size: 12px;
+      }
+      .health {
+        font-size: 10px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 1px 6px;
+        white-space: nowrap;
+      }
+      .live {
+        color: var(--ok);
+      }
+      .loading {
+        color: var(--warn);
+      }
+      .cached {
+        color: var(--blue);
+      }
+      .error {
+        color: var(--bad);
+      }
+      .layer {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin: 7px 0;
+        font-size: 12.5px;
+      }
+      .sw {
+        width: 18px;
+        height: 10px;
+        border-radius: 2px;
+        display: inline-block;
+        flex: none;
+      }
+      .metricgrid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+      }
+      .metric {
+        background: #12181c;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 7px;
+        text-align: center;
+      }
+      .metric b {
+        font-size: 16px;
+        display: block;
+      }
+      .metric span {
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .rank {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+      }
+      .rank th {
+        color: var(--muted);
+        text-align: left;
+        padding: 5px 4px;
+        border-bottom: 1px solid var(--line);
+      }
+      .rank td {
+        padding: 6px 4px;
+        border-bottom: 1px solid #2d3740;
+      }
+      .rank tr[data-key] {
+        cursor: pointer;
+      }
+      .rank tr[data-key]:hover {
+        background: #263039;
+      }
+      .score {
+        font-weight: 800;
+      }
+      .sources a {
+        color: #9bd2ff;
+      }
+      .copy {
+        color: #76838c;
+        font-size: 11px;
+        margin-top: 15px;
+      }
+      details summary {
+        cursor: pointer;
+        color: #dce5ea;
+      }
+      .leaflet-popup-content {
+        font: 12px/1.45 system-ui;
+        min-width: 265px;
+      }
+      .leaflet-control-layers {
+        background: #151b20;
+        color: #f4f7f9;
+      }
+      @media (max-width: 840px) {
+        header {
+          height: auto;
+        }
+        main {
+          grid-template-columns: 1fr;
+          height: auto;
+        }
+        aside {
+          max-height: 48vh;
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+        #map {
+          height: 52vh;
+        }
+      }
+
+      /* MitchellCo EvacWatch v2 shared UX standard */
+      .mc-question {
+        font-size: 13px;
+        font-weight: 700;
+        margin: 0 0 10px;
+        color: #fff;
+      }
+      .mc-health-card {
+        background: var(--card, #20262a);
+        border: 1px solid var(--line, #394148);
+        border-radius: 8px;
+        padding: 9px;
+        margin: 8px 0;
+      }
+      .mc-health-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        padding: 3px 0;
+        font-size: 11.5px;
+      }
+      .mc-pill {
+        font-size: 10px;
+        border: 1px solid var(--line, #394148);
+        border-radius: 999px;
+        padding: 1px 6px;
+        white-space: nowrap;
+      }
+      .mc-live {
+        color: #b8efc4;
+      }
+      .mc-retrying {
+        color: #ffbf3f;
+      }
+      .mc-unavailable {
+        color: #ff9c9c;
+      }
+      .mc-cached {
+        color: #9ccaff;
+      }
+      .mc-standard-details {
+        font-size: 11.5px;
+        color: var(--muted, #9eabb3);
+      }
+      .mc-standard-details summary {
+        cursor: pointer;
+        color: var(--text, #f6f8f9);
+      }
+    </style>
+    <script data-mitchellco-runtime="evacwatch-v2">
+      (() => {
+        "use strict";
+        if (window.MCMap?.version === "evacwatch-v2") return;
+        const nativeFetch = window.fetch.bind(window);
+        const inflight = new Map();
+        const sourceState = new Map();
+        const friendly = (host) =>
+          ({
+            "api.weather.gov": "NWS",
+            "waterservices.usgs.gov": "USGS",
+            "earthquake.usgs.gov": "USGS Earthquakes",
+            "services3.arcgis.com": "ArcGIS",
+            "onemap.cdc.gov": "CDC/ATSDR",
+            "tigerweb.geo.census.gov": "U.S. Census",
+            "api.open-meteo.com": "Open-Meteo",
+            "api.tidesandcurrents.noaa.gov": "NOAA CO-OPS",
+          })[host] || host;
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        const retryable = (status) => [429, 502, 503, 504].includes(status);
+        const setState = (url, state, detail = "") => {
+          try {
+            const host = new URL(url, location.href).host;
+            if (!host || host === location.host) return;
+            sourceState.set(host, { state, detail, time: Date.now() });
+            renderHealth();
+          } catch (_) {}
+        };
+        const renderHealth = () => {
+          const root = document.getElementById("mc-runtime-health-list");
+          if (!root) return;
+          const rows = [...sourceState.entries()].sort((a, b) =>
+            a[0].localeCompare(b[0]),
+          );
+          root.innerHTML = rows.length
+            ? rows
+                .map(([host, s]) => {
+                  const cls =
+                    s.state === "Live"
+                      ? "mc-live"
+                      : s.state === "Retrying"
+                        ? "mc-retrying"
+                        : s.state === "Cached"
+                          ? "mc-cached"
+                          : "mc-unavailable";
+                  const age = Math.max(
+                    0,
+                    Math.floor((Date.now() - s.time) / 60000),
+                  );
+                  return `<div class="mc-health-row"><span>${friendly(host)}</span><span class="mc-pill ${cls}">${s.state}${s.detail ? " · " + s.detail : ""}${s.state === "Live" ? ` · ${age < 1 ? "&lt;1" : age}m` : ""}</span></div>`;
+                })
+                .join("")
+            : '<div class="mc-standard-details">Waiting for live sources…</div>';
+        };
+        async function resilientFetch(input, init = {}) {
+          const req =
+            input instanceof Request ? input : new Request(input, init);
+          const method = (req.method || "GET").toUpperCase();
+          if (method !== "GET") return nativeFetch(input, init);
+          const url = req.url;
+          if (inflight.has(url)) {
+            const r = await inflight.get(url);
+            return r.clone();
+          }
+          const task = (async () => {
+            let lastErr;
+            for (let attempt = 0; attempt < 3; attempt++) {
+              const ctl = new AbortController();
+              const timer = setTimeout(() => ctl.abort(), 15000);
+              try {
+                if (attempt) {
+                  setState(url, "Retrying", `attempt ${attempt + 1}/3`);
+                  await sleep(750 * 2 ** (attempt - 1));
+                }
+                const headers = new Headers(req.headers);
+                const r = await nativeFetch(
+                  new Request(req, { signal: ctl.signal, headers }),
+                );
+                clearTimeout(timer);
+                if (r.ok) {
+                  setState(url, "Live");
+                  return r;
+                }
+                lastErr = new Error(`HTTP ${r.status}`);
+                if (!retryable(r.status)) {
+                  setState(url, "Unavailable", `HTTP ${r.status}`);
+                  return r;
+                }
+              } catch (e) {
+                clearTimeout(timer);
+                lastErr = e;
+              }
+            }
+            setState(
+              url,
+              "Unavailable",
+              lastErr?.name === "AbortError" ? "timeout" : "request failed",
+            );
+            throw lastErr || new Error("request failed");
+          })();
+          inflight.set(url, task);
+          try {
+            const r = await task;
+            return r.clone();
+          } finally {
+            inflight.delete(url);
+          }
+        }
+        async function openPopup(layer, map, latlng, zoom = 8) {
+          if (!layer || !map) return;
+          map.closePopup();
+          const target =
+            typeof layer.getLayers === "function" && !layer.getPopup?.()
+              ? layer.getLayers().find((x) => x.getPopup?.())
+              : layer;
+          if (!target?.openPopup) return;
+          const open = () => {
+            try {
+              target.openPopup();
+              target.bringToFront?.();
+            } catch (_) {}
+          };
+          if (
+            latlng &&
+            Number.isFinite(latlng[0]) &&
+            Number.isFinite(latlng[1])
+          ) {
+            map.once("moveend", open);
+            map.flyTo(latlng, zoom, { duration: 0.65 });
+            setTimeout(open, 900);
+          } else open();
+        }
+        function makeGenerationGuard(state, key = "generation") {
+          state[key] = Number(state[key] || 0);
+          return {
+            next() {
+              state[key] += 1;
+              return state[key];
+            },
+            current() {
+              return state[key];
+            },
+            valid(token) {
+              return token === state[key];
+            },
+          };
+        }
+        window.MCMap = {
+          version: "evacwatch-v2",
+          nativeFetch,
+          fetch: resilientFetch,
+          openPopup,
+          makeGenerationGuard,
+          sourceState,
+        };
+        window.fetch = resilientFetch;
+        document.addEventListener("DOMContentLoaded", () => {
+          renderHealth();
+          setInterval(renderHealth, 30000);
+        });
+      })();
+    </script>
+  </head>
+  <body>
+    <header>
+      <h1>NetWatch: Internet Outage Watch</h1>
+      <span class="spacer"></span
+      ><label
+        >Region
+        <select id="region"></select></label
+      ><button id="refresh">Refresh</button>
+    </header>
+    <main>
+      <aside>
+        <details
+          class="mc-health-card mc-standard-details"
+          data-mitchellco-fusion="hazard-exposure-consequence"
+        >
+          <summary><b>How to read this map</b></summary>
+          <div style="margin-top: 7px">
+            <b>Hazard / signal:</b> Reachability / routing signals<br /><b
+              >Exposure:</b
+            >
+            Networks and geography<br /><b>Consequence / vulnerability:</b>
+            Derived outage confidence, never cause<br /><br />Official/source
+            values remain distinct from MitchellCo derived screening scores or
+            estimates. Derived values are for prioritization and interpretation,
+            not official warnings or predictions.
+          </div>
+        </details>
+
+        <div class="question">
+          Where are multiple Internet measurement probes going offline at the
+          same time?
+        </div>
+        <div class="sub">
+          NetWatch fuses RIPE Atlas probe connectivity, ASN/network
+          concentration and live RIPE RIS BGP activity. A disconnected probe is
+          evidence of a lost measurement vantage point,
+          <b>not proof of a consumer Internet outage</b>. BGP activity is
+          independent context, not a claimed cause.
+        </div>
+        <div class="card">
+          <b>Data health</b>
+          <div class="row">
+            <span>RIPE Atlas probes</span
+            ><span id="probeStatus" class="health loading">Loading</span>
+          </div>
+          <div class="row">
+            <span>RIPE RIS Live BGP</span
+            ><span id="bgpStatus" class="health loading">Connecting</span>
+          </div>
+          <div class="status" id="checked">Probe snapshot: waiting…</div>
+        </div>
+        <div class="metricgrid">
+          <div class="metric">
+            <b id="disc24">–</b><span>disconnects ≤24h</span>
+          </div>
+          <div class="metric">
+            <b id="connected">–</b><span>connected sample</span>
+          </div>
+          <div class="metric"><b id="bgp5">–</b><span>BGP msgs / 5m</span></div>
+        </div>
+        <div class="card">
+          <b>Layers</b>
+          <label class="layer"
+            ><input id="tDisc" type="checkbox" checked /><span
+              class="sw"
+              style="background: var(--bad)"
+            ></span
+            >Recently disconnected RIPE Atlas probes</label
+          >
+          <label class="layer"
+            ><input id="tConn" type="checkbox" /><span
+              class="sw"
+              style="background: var(--blue)"
+            ></span
+            >Connected probe sample</label
+          >
+          <label class="layer"
+            ><input id="tCluster" type="checkbox" checked /><span
+              class="sw"
+              style="background: #ffca5844; border: 1px solid var(--warn)"
+            ></span
+            >Derived disconnect clusters</label
+          >
+        </div>
+        <div style="font-size: 13px; font-weight: 700; margin: 13px 0 5px">
+          Highest outage-confidence signals
+        </div>
+        <table class="rank">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Network / area</th>
+              <th>Recent</th>
+              <th>Score</th>
+            </tr>
+          </thead>
+          <tbody id="rankBody">
+            <tr>
+              <td colspan="4" class="small">Waiting for probe snapshot…</td>
+            </tr>
+          </tbody>
+        </table>
+        <details class="card">
+          <summary><b>How the derived score works</b></summary>
+          <div class="small" style="margin-top: 8px">
+            <b>Non-official outage-confidence score, 0–100.</b><br /><br />For
+            each ASN + ~1° geographic cell:<br /><b>recent concentration</b> =
+            min(55, 18 × ln(1 + probes disconnected in last 24h))<br /><b
+              >recency</b
+            >
+            = max(0, 25 × (1 − median disconnect age / 24h))<br /><b
+              >network concentration</b
+            >
+            = min(20, 4 × distinct disconnected probes in the same ASN/cell)<br /><br />The
+            score is a triage signal only. It does not estimate affected
+            subscribers, outage duration, or cause. A single disconnected probe
+            is deliberately kept low-confidence.
+          </div>
+        </details>
+        <details class="card">
+          <summary><b>What the fused layers mean</b></summary>
+          <div class="small" style="margin-top: 8px">
+            The strongest signal is several recently disconnected probes
+            belonging to the same ASN and geographic area. Connected probes
+            provide local measurement context. RIPE RIS Live separately shows
+            whether Internet routing activity is elevated, but NetWatch does not
+            infer that a BGP burst caused a probe disconnect. Probe coordinates
+            are intentionally obfuscated by RIPE Atlas.
+          </div>
+        </details>
+        <details class="card sources">
+          <summary><b>Sources, refresh & limitations</b></summary>
+          <div style="margin-top: 8px">
+            <a
+              href="https://atlas.ripe.net/docs/apis/rest-api-manual/authentication/anonymous-access"
+              target="_blank"
+              rel="noopener"
+              >RIPE Atlas API</a
+            >: anonymous public probe reads. Selected-region probe snapshot
+            every <b>10 minutes</b>; connected and disconnected probes are
+            spatially bounded. RIPE Atlas intentionally offsets probe
+            coordinates by roughly 80–400 m for privacy.<br /><br />
+            <a
+              href="https://ris-live.ripe.net/manual/"
+              target="_blank"
+              rel="noopener"
+              >RIPE RIS Live</a
+            >: anonymous browser WebSocket stream of BGP messages. NetWatch
+            keeps only a rolling <b>5-minute message count</b> as routing
+            context and reconnects with exponential backoff.<br /><br />
+            <b>IODA:</b> omitted in this build because a current anonymous
+            browser endpoint was not sufficiently verified from authoritative
+            documentation during the build. No guessed or unofficial endpoint is
+            used.<br /><br />
+            <b>PeeringDB:</b> omitted from the live map to avoid broad facility
+            downloads and anonymous API rate pressure; RIPE Atlas ASN fields
+            provide the network-exposure dimension directly.<br /><br />
+            The map cannot distinguish ISP failure from probe power loss, local
+            LAN failure, maintenance, hardware failure or other causes without
+            independent evidence.
+          </div>
+        </details>
+        <div class="copy">
+          © 2026 MitchellCo Inc.<br />Map tiles © OpenStreetMap contributors.
+          RIPE Atlas and RIPE RIS data retain their respective attribution and
+          terms.
+        </div>
+      </aside>
+      <div id="map"></div>
+    </main>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+      "use strict";
+      const $ = (id) => document.getElementById(id),
+        EMPTY = [];
+      const REGIONS = [
+        ["Continental U.S.", [24.3, -125, 49.6, -66.4]],
+        ["West", [31, -125, 49.6, -102]],
+        ["Central", [25, -105, 49.6, -87]],
+        ["East", [24.3, -90, 49.6, -66.4]],
+        ["Alaska", [51, -179.9, 71.8, -129]],
+        ["Hawaii", [18.7, -160.5, 22.6, -154.5]],
+      ];
+      const map = L.map("map", { preferCanvas: true, minZoom: 3 }).setView(
+          [39, -98],
+          4,
+        ),
+        base = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 18,
+          attribution: "&copy; OpenStreetMap contributors",
+        }).addTo(map);
+      const discLayer = L.layerGroup().addTo(map),
+        connLayer = L.layerGroup(),
+        clusterLayer = L.layerGroup().addTo(map);
+      const S = {
+        gen: 0,
+        busy: false,
+        probes: [],
+        lastProbe: 0,
+        mode: "",
+        bgp: [],
+        ws: null,
+        wsRetry: 0,
+        wsTimer: null,
+        rank: new Map(),
+      };
+      function esc(s) {
+        return String(s ?? "").replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
+      function region() {
+        return REGIONS[+$("region").value || 0];
+      }
+      function box() {
+        const b = region()[1];
+        return { s: b[0], w: b[1], n: b[2], e: b[3] };
+      }
+      function h(id, state, detail = "") {
+        const e = $(id);
+        e.textContent = state + (detail ? " · " + detail : "");
+        e.className =
+          "health " +
+          ({
+            Live: "live",
+            Cached: "cached",
+            Loading: "loading",
+            Connecting: "loading",
+            Unavailable: "error",
+          }[state] || "");
+      }
+      function cacheKey() {
+        return "netwatch:v1:" + region()[0];
+      }
+      function fmtAge(ms) {
+        const m = Math.floor(ms / 60000);
+        return m < 1 ? "<1m" : m < 60 ? m + "m" : (m / 60).toFixed(1) + "h";
+      }
+      async function getJSON(url, gen) {
+        const ctl = new AbortController(),
+          timer = setTimeout(() => ctl.abort(), 12000);
+        try {
+          const r = await fetch(url, {
+            signal: ctl.signal,
+            headers: { Accept: "application/json" },
+          });
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          const j = await r.json();
+          if (gen !== S.gen) return null;
+          return j;
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+      function probeURL(status, b, page = 1) {
+        const q = new URLSearchParams({
+          status: String(status),
+          latitude__gte: b.s,
+          latitude__lte: b.n,
+          longitude__gte: b.w,
+          longitude__lte: b.e,
+          page_size: "500",
+          page: String(page),
+          fields:
+            "id,geometry,status,status_since,last_connected,asn_v4,asn_v6,is_anchor,total_uptime",
+        });
+        return "https://atlas.ripe.net/api/v2/probes/?" + q;
+      }
+      async function loadStatus(status, b, gen) {
+        let url = probeURL(status, b, 1),
+          out = [],
+          pages = 0;
+        while (url && pages < 4) {
+          const j = await getJSON(url, gen);
+          if (!j) return null;
+          out.push(...(j.results || []));
+          url = j.next;
+          pages++;
+        }
+        return out;
+      }
+      async function loadProbes() {
+        if (S.busy) return;
+        S.busy = true;
+        const gen = ++S.gen,
+          b = box();
+        h("probeStatus", "Loading");
+        discLayer.clearLayers();
+        connLayer.clearLayers();
+        clusterLayer.clearLayers();
+        S.rank.clear();
+        $("rankBody").innerHTML =
+          '<tr><td colspan="4" class="small">Loading selected region…</td></tr>';
+        map.fitBounds(
+          [
+            [b.s, b.w],
+            [b.n, b.e],
+          ],
+          { padding: [8, 8] },
+        );
+        try {
+          let d,
+            c,
+            mode = "Live";
+          try {
+            [d, c] = await Promise.all([
+              loadStatus(2, b, gen),
+              loadStatus(1, b, gen),
+            ]);
+            if (gen !== S.gen) return;
+            if (!d || !c) throw new Error("stale");
+            const snap = { time: Date.now(), d, c };
+            localStorage.setItem(cacheKey(), JSON.stringify(snap));
+          } catch (e) {
+            const snap = JSON.parse(localStorage.getItem(cacheKey()) || "null");
+            if (!snap) throw e;
+            d = snap.d || [];
+            c = snap.c || [];
+            S.lastProbe = snap.time;
+            mode = "Cached";
+          }
+          if (gen !== S.gen) return;
+          S.probes = [...d, ...c];
+          if (mode === "Live") S.lastProbe = Date.now();
+          S.mode = mode;
+          renderProbes(d, c);
+          h(
+            "probeStatus",
+            mode,
+            `${d.length} disconnected · ${c.length} connected`,
+          );
+        } catch (e) {
+          if (gen === S.gen) {
+            h("probeStatus", "Unavailable");
+            $("rankBody").innerHTML =
+              '<tr><td colspan="4" class="small">RIPE Atlas unavailable. BGP context can still run independently.</td></tr>';
+          }
+        } finally {
+          S.busy = false;
+        }
+      }
+      function pt(p) {
+        const g = p.geometry?.coordinates;
+        if (!g || g.length < 2) return null;
+        return [g[1], g[0]];
+      }
+      function asn(p) {
+        return p.asn_v4 || p.asn_v6 || "unknown";
+      }
+      function since(p) {
+        return new Date(p.status_since || p.last_connected || 0).getTime() || 0;
+      }
+      function renderProbes(d, c) {
+        const now = Date.now(),
+          recent = d.filter((p) => since(p) && now - since(p) <= 86400000);
+        $("disc24").textContent = recent.length;
+        $("connected").textContent = c.length.toLocaleString();
+        for (const p of recent) {
+          const x = pt(p);
+          if (!x) continue;
+          const age = now - since(p);
+          L.circleMarker(x, {
+            radius: p.is_anchor ? 6 : 4,
+            color: "#ff705d",
+            weight: 1,
+            fillColor: "#ff705d",
+            fillOpacity: 0.75,
+          })
+            .bindPopup(
+              `<b>RIPE Atlas probe ${p.id}</b><br>Status: disconnected<br>ASN: ${esc(asn(p))}<br>Disconnected: ${fmtAge(age)} ago<br>${p.is_anchor ? "Atlas anchor" : "Atlas probe"}<br><span class="small">Location is intentionally obfuscated by RIPE Atlas. A probe disconnect alone is not proof of an ISP outage.</span>`,
+            )
+            .addTo(discLayer);
+        }
+        for (const p of c.slice(0, 900)) {
+          const x = pt(p);
+          if (!x) continue;
+          L.circleMarker(x, {
+            radius: p.is_anchor ? 4 : 2,
+            color: "#5bc0ff",
+            weight: 0.7,
+            fillColor: "#5bc0ff",
+            fillOpacity: 0.38,
+          })
+            .bindPopup(
+              `<b>RIPE Atlas probe ${p.id}</b><br>Status: connected<br>ASN: ${esc(asn(p))}<br><span class="small">Connected measurement vantage point; location is obfuscated.</span>`,
+            )
+            .addTo(connLayer);
+        }
+        buildClusters(recent, c);
+      }
+      function buildClusters(recent, connected) {
+        const now = Date.now(),
+          groups = new Map(),
+          base = new Map();
+        for (const p of connected) {
+          const x = pt(p);
+          if (!x) continue;
+          const key = `${asn(p)}|${Math.floor(x[0])}|${Math.floor(x[1])}`;
+          base.set(key, (base.get(key) || 0) + 1);
+        }
+        for (const p of recent) {
+          const x = pt(p);
+          if (!x) continue;
+          const key = `${asn(p)}|${Math.floor(x[0])}|${Math.floor(x[1])}`;
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(p);
+        }
+        const rows = [];
+        for (const [key, ps] of groups) {
+          const coords = ps.map(pt).filter(Boolean);
+          if (!coords.length) continue;
+          const lat = coords.reduce((a, x) => a + x[0], 0) / coords.length,
+            lon = coords.reduce((a, x) => a + x[1], 0) / coords.length,
+            ages = ps
+              .map((p) => (now - since(p)) / 3600000)
+              .sort((a, b) => a - b),
+            med = ages[Math.floor(ages.length / 2)],
+            recentPts = Math.min(55, 18 * Math.log(1 + ps.length)),
+            recency = Math.max(0, 25 * (1 - med / 24)),
+            concentration = Math.min(20, 4 * ps.length),
+            score = Math.min(100, recentPts + recency + concentration),
+            a = asn(ps[0]),
+            connectedHere = base.get(key) || 0;
+          const radius = Math.max(
+            14000,
+            Math.min(70000, 12000 + ps.length * 9000),
+          );
+          const layer = L.circle([lat, lon], {
+            radius,
+            color:
+              score >= 70 ? "#ff705d" : score >= 45 ? "#ffca58" : "#c18cff",
+            weight: 2,
+            fillOpacity: 0.12,
+          })
+            .bindPopup(
+              `<b>Derived disconnect cluster</b><br>ASN: ${esc(a)}<br>Recent disconnected probes: ${ps.length}<br>Connected probes in same ASN/~1° cell: ${connectedHere}<br>Median disconnect age: ${med.toFixed(1)} h<br><b>Outage-confidence: ${score.toFixed(0)}/100</b><br><span class="small">Non-official triage signal. It does not estimate subscribers affected or establish cause.</span>`,
+            )
+            .addTo(clusterLayer);
+          S.rank.set(key, { lat, lon, layer });
+          rows.push({ key, asn: a, n: ps.length, med, score, lat, lon });
+        }
+        rows.sort((a, b) => b.score - a.score || b.n - a.n);
+        renderRank(rows.slice(0, 15));
+      }
+      function renderRank(rows) {
+        const b = $("rankBody");
+        if (!rows.length) {
+          b.innerHTML =
+            '<tr><td colspan="4" class="small">No RIPE Atlas probes in this region disconnected within the last 24 hours.</td></tr>';
+          return;
+        }
+        b.innerHTML = rows
+          .map(
+            (r, i) =>
+              `<tr data-key="${esc(r.key)}"><td>${i + 1}</td><td><b>AS${esc(r.asn)}</b><br><span class="small">~${r.lat.toFixed(1)}, ${r.lon.toFixed(1)}</span></td><td>${r.n}<br><span class="small">${r.med.toFixed(1)}h median</span></td><td class="score">${r.score.toFixed(0)}</td></tr>`,
+          )
+          .join("");
+        b.querySelectorAll("tr[data-key]").forEach(
+          (tr) =>
+            (tr.onclick = () => {
+              const x = S.rank.get(tr.dataset.key);
+              if (!x) return;
+              if (!map.hasLayer(clusterLayer)) clusterLayer.addTo(map);
+              map.flyTo([x.lat, x.lon], 8, { duration: 0.7 });
+              map.once("moveend", () => x.layer.openPopup());
+              setTimeout(() => x.layer.openPopup(), 900);
+            }),
+        );
+      }
+      function connectRIS() {
+        if (S.ws) {
+          try {
+            S.ws.close();
+          } catch {}
+        }
+        h("bgpStatus", "Connecting");
+        const ws = new WebSocket(
+          "wss://ris-live.ripe.net/v1/ws/?client=mitchellco-netwatch",
+        );
+        S.ws = ws;
+        ws.onopen = () => {
+          S.wsRetry = 0;
+          h("bgpStatus", "Live", "rolling 5m");
+          ws.send(
+            JSON.stringify({ type: "ris_subscribe", data: { type: "UPDATE" } }),
+          );
+        };
+        ws.onmessage = (e) => {
+          try {
+            const m = JSON.parse(e.data);
+            if (m.type === "ris_message") {
+              const now = Date.now();
+              S.bgp.push(now);
+              S.bgp = S.bgp.filter((t) => now - t <= 300000);
+              $("bgp5").textContent = S.bgp.length.toLocaleString();
+            }
+          } catch {}
+        };
+        ws.onerror = () => {
+          h("bgpStatus", "Unavailable", "reconnecting");
+        };
+        ws.onclose = () => {
+          if (document.hidden || !navigator.onLine) return;
+          S.wsRetry = Math.min(S.wsRetry + 1, 6);
+          const delay = Math.min(60000, 2000 * Math.pow(2, S.wsRetry - 1));
+          clearTimeout(S.wsTimer);
+          S.wsTimer = setTimeout(connectRIS, delay);
+        };
+      }
+      function toggle(id, l) {
+        $(id).onchange = (e) =>
+          e.target.checked ? l.addTo(map) : map.removeLayer(l);
+      }
+      toggle("tDisc", discLayer);
+      toggle("tConn", connLayer);
+      toggle("tCluster", clusterLayer);
+      L.control
+        .layers(
+          { OpenStreetMap: base },
+          {
+            "Recent probe disconnects": discLayer,
+            "Connected probe sample": connLayer,
+            "Derived disconnect clusters": clusterLayer,
+          },
+          { collapsed: true },
+        )
+        .addTo(map);
+      REGIONS.forEach((r, i) => {
+        const o = document.createElement("option");
+        o.value = i;
+        o.textContent = r[0];
+        $("region").appendChild(o);
+      });
+      $("region").value = "0";
+      $("region").onchange = loadProbes;
+      $("refresh").onclick = loadProbes;
+      function clock() {
+        if (!S.lastProbe) {
+          $("checked").textContent = "Probe snapshot: waiting…";
+          return;
+        }
+        $("checked").textContent =
+          `Probe snapshot: ${S.mode} · ${fmtAge(Date.now() - S.lastProbe)} old`;
+      }
+      setInterval(clock, 1000);
+      function guarded() {
+        if (!document.hidden && navigator.onLine) loadProbes();
+      }
+      loadProbes();
+      connectRIS();
+      setInterval(guarded, 600000);
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          if (S.ws) {
+            try {
+              S.ws.close();
+            } catch {}
+          }
+        } else if (navigator.onLine) {
+          guarded();
+          connectRIS();
+          map.invalidateSize(false);
+        }
+      });
+      window.addEventListener("online", () => {
+        loadProbes();
+        connectRIS();
+      });
+      window.addEventListener("offline", () => {
+        h("probeStatus", "Cached", "offline");
+        h("bgpStatus", "Unavailable", "offline");
+      });
+      window.addEventListener("resize", () => map.invalidateSize(false));
+    </script>
+  </body>
+</html>

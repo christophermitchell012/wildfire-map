@@ -1,46 +1,932 @@
 <!doctype html>
 <html lang="en">
-<head>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-8SVEH8WD1R"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-8SVEH8WD1R');
-</script>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NewsPulse | Breaking News Geography</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<style>
-:root{color-scheme:dark;--bg:#101315;--panel:#171b1e;--card:#20262a;--line:#394148;--text:#f6f8f9;--muted:#9eabb3;--unrest:#e6b73f;--violence:#e45d5d;--transport:#55a7ff;--health:#55b98c;--economy:#b785e8}*{box-sizing:border-box}html,body{height:100%;margin:0}body{font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}header{display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:9px 13px;background:var(--panel);border-bottom:1px solid var(--line)}h1{font-size:16px;margin:0}.sp{flex:1}select,button{font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:5px 7px}main{display:grid;grid-template-columns:minmax(310px,390px) 1fr;height:calc(100% - 51px)}aside{overflow:auto;padding:11px 13px 28px;background:var(--panel);border-right:1px solid var(--line)}#map{height:100%;min-height:440px}.dim .leaflet-tile-pane{filter:brightness(.62) saturate(.78)}h2{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:17px 0 6px}.card{display:block;background:var(--card);border:1px solid var(--line);border-radius:7px;padding:7px;margin:5px 0}.row{display:flex;gap:7px;align-items:center}.dot{width:12px;height:12px;border-radius:50%;display:inline-block}.note,.status,.src,.copy{font-size:11.5px;color:var(--muted)}.metric{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px}.formula{font:11px/1.5 ui-monospace,monospace;background:#111719;border:1px solid var(--line);border-radius:7px;padding:7px}.err{color:#ff8b8b;font-size:12px}.src a{color:#9ccaff}.copy{margin-top:13px;color:#7d878d}.pill{display:inline-block;padding:2px 6px;border-radius:12px;color:#fff;font-weight:700;font-size:11px}.legend{font-size:12px}.legend div{margin:4px 0;display:flex;gap:7px;align-items:center}.leaflet-popup-content{font:12px/1.45 system-ui;min-width:260px;max-width:340px}.leaflet-popup-content dl{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;margin:6px 0}.leaflet-popup-content dd{margin:0}.leaflet-popup-content a{color:#2878c7}.top{margin:4px 0;padding:7px 6px;border-bottom:1px solid var(--line);font-size:12px;border-radius:5px;cursor:pointer}.top:hover,.top:focus{background:#2a3237;outline:none}.top b{display:inline-block;min-width:28px}@media(max-width:860px){main{grid-template-columns:1fr;height:auto}aside{border-right:0}#map{height:62vh}}
-</style></head><body>
-<header><h1>NewsPulse: Breaking News Geography</h1><span class="sp"></span><label>Basemap <select id="base"></select></label><label>Window <select id="win"><option value="6">6 hours</option><option value="12">12 hours</option></select></label><button id="refresh">Refresh</button></header>
-<main><aside>
-<h2>Topics</h2>
-<label class="card"><span class="row"><input class="topic" data-k="unrest" type="checkbox" checked><span class="dot" style="background:var(--unrest)"></span><b>Unrest / protest</b></span></label>
-<label class="card"><span class="row"><input class="topic" data-k="violence" type="checkbox" checked><span class="dot" style="background:var(--violence)"></span><b>Explosion / shooting</b></span></label>
-<label class="card"><span class="row"><input class="topic" data-k="transport" type="checkbox" checked><span class="dot" style="background:var(--transport)"></span><b>Transportation disruption</b></span></label>
-<label class="card"><span class="row"><input class="topic" data-k="health" type="checkbox" checked><span class="dot" style="background:var(--health)"></span><b>Disease / outbreak</b></span></label>
-<label class="card"><span class="row"><input class="topic" data-k="economy" type="checkbox" checked><span class="dot" style="background:var(--economy)"></span><b>Layoff / closure / bankruptcy</b></span></label>
-<div class="legend"><div><span class="dot" style="width:8px;height:8px;background:#bbb"></span>smaller = lower current article-location count</div><div><span class="dot" style="width:16px;height:16px;background:#bbb"></span>larger = higher current count</div></div>
-<h2>What this map means</h2><p class="note">GDELT geolocates places mentioned near breaking-news topics across global coverage. A keyless GitHub Actions job reads GDELT's raw 15-minute files via lastupdate.txt and writes a same-origin snapshot for this page. Media volume is attention, not event severity, and automated classification/geocoding can still be wrong.</p>
-<h2>Derived news intensity</h2><div class="formula"><b>Acceleration = current hourly rate / trailing hourly rate</b><br>Current rate = current count / selected hours<br>Trailing rate = max(0.25, (48h count - current count) / (48 - selected hours))<br>Intensity = min(100, 20×ln(1+current count) + 25×ln(max(1,acceleration)))</div><p class="note">Derived/non-official. It measures acceleration and volume only. It does not measure casualties, damage, truth, importance or severity.</p>
-<h2>Live status</h2><div class="metric"><span>Mapped locations</span><b id="locs">0</b></div><div class="metric"><span>Visible source domains</span><b id="domains">0</b></div><div class="metric"><span>Fastest acceleration</span><b id="fast">—</b></div><p class="status" id="st">Snapshot: loading…</p><div id="errs"></div>
-<h2>Top accelerating locations</h2><div id="top"><p class="note">Waiting for snapshot.</p></div>
-<h2>Refresh / provenance</h2><p class="note">GDELT publishes raw update files about every 15 minutes. The repository snapshot job is scheduled at :07 and :37 each hour. This page checks the same-origin snapshot every 5 minutes, so a new GitHub-generated snapshot should appear shortly after the scheduled job finishes.</p>
-<h2>Sources</h2><p class="src"><a href="https://data.gdeltproject.org/gdeltv2/lastupdate.txt" target="_blank">GDELT 2.0 lastupdate.txt</a> · <a href="https://blog.gdeltproject.org/gdelt-2-0-our-global-world-in-realtime/" target="_blank">GDELT 2.0 raw feeds</a><br>Basemaps: Esri World Street Map, USGS The National Map, OpenStreetMap, OpenTopoMap and NASA EOSDIS GIBS. GDELT extraction and geocoding can contain false positives or ambiguous locations.</p><div class="copy">© 2026 MitchellCo Inc. Original interface and integration logic only.</div>
-</aside><div id="map"></div></main>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script>
-const $=x=>document.getElementById(x),map=L.map('map',{preferCanvas:true,worldCopyJump:true}).setView([25,0],2),layer=L.layerGroup().addTo(map);let snapshot=null,rows=[];
-const TOPICS={unrest:{label:'Unrest / protest',c:'#e6b73f'},violence:{label:'Explosion / shooting',c:'#e45d5d'},transport:{label:'Transportation disruption',c:'#55a7ff'},health:{label:'Disease / outbreak',c:'#55b98c'},economy:{label:'Layoff / closure / bankruptcy',c:'#b785e8'}};
-function esc(s){return String(s??'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]))}function enabled(k){return document.querySelector('.topic[data-k="'+k+'"]').checked}function krow(x){return x.name.toLowerCase()+'|'+(+x.lat).toFixed(2)+'|'+(+x.lon).toFixed(2)}
-function buildRows(){rows=[];if(!snapshot?.windows)return;let h=$('win').value,w=snapshot.windows[h]||{};Object.keys(TOPICS).forEach(k=>{let d=w[k];if(!d)return;let bm=new Map((d.baseline||[]).map(x=>[krow(x),Number(x.count)||0]));(d.current||[]).forEach(x=>{let b=bm.get(krow(x))||0,count=Number(x.count)||1,trail=Math.max(.25,Math.max(0,b-count)/(48-(+h))),rate=count/(+h),acc=rate/trail,intensity=Math.min(100,20*Math.log1p(count)+25*Math.log(Math.max(1,acc)));rows.push({...x,k,base:b,count,acc,intensity})})})}
-function radius(x){return Math.max(5,Math.min(20,4+Math.sqrt(Math.max(1,x.count))*2.2))}function opacity(x){return .55+.4*Math.min(1,x.intensity/100)}
-function render(){buildRows();layer.clearLayers();let vis=rows.filter(x=>enabled(x.k)),ds=new Set;vis.forEach(x=>(x.domains||[]).forEach(d=>ds.add(d)));vis.forEach(x=>{let t=TOPICS[x.k],links=(x.links||[]).slice(0,5).map(a=>'<li><a href="'+esc(a.href)+'" target="_blank" rel="noopener">'+esc(a.text||a.href)+'</a></li>').join('')||'<li>No representative link exposed</li>',m=L.circleMarker([x.lat,x.lon],{radius:radius(x),color:'#111',weight:1.5,fillColor:t.c,fillOpacity:opacity(x)});m.bindPopup('<b>'+esc(x.name)+'</b><br><span class="pill" style="background:'+t.c+'">'+esc(t.label)+'</span><dl><dt>Current count</dt><dd>'+x.count+'</dd><dt>48h count</dt><dd>'+x.base+'</dd><dt>Acceleration</dt><dd>'+x.acc.toFixed(1)+'×</dd><dt>Derived intensity</dt><dd>'+x.intensity.toFixed(0)+'/100</dd><dt>Visible domains</dt><dd>'+(x.domains||[]).length+'</dd></dl><b>Representative links</b><ul>'+links+'</ul><p>Links are only retained when the GDELT topic-theme occurrence is near the mapped location occurrence in the source document.</p>').addTo(layer);x._marker=m});$('locs').textContent=vis.length;$('domains').textContent=ds.size;let top=[...vis].sort((a,b)=>b.acc-a.acc||b.count-a.count).slice(0,6);$('fast').textContent=top[0]?top[0].acc.toFixed(1)+'×':'—';$('top').innerHTML=top.map((x,i)=>'<div class="top" tabindex="0" role="button" data-i="'+i+'"><b>#'+(i+1)+'</b> '+esc(x.name)+' · '+esc(TOPICS[x.k].label)+' · <strong>'+x.acc.toFixed(1)+'×</strong> · n='+x.count+'</div>').join('')||'<p class="note">No current mapped matches in the snapshot.</p>';document.querySelectorAll('.top[data-i]').forEach(el=>{let go=()=>{let x=top[+el.dataset.i];if(!x)return;map.setView([x.lat,x.lon],Math.max(8,map.getZoom()));setTimeout(()=>x._marker?.openPopup(),180)};el.onclick=go;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}}})}
-function nextSchedule(now=new Date()){let n=new Date(now);n.setSeconds(0,0);let m=n.getMinutes();if(m<7)n.setMinutes(7);else if(m<37)n.setMinutes(37);else{n.setHours(n.getHours()+1);n.setMinutes(7)}return n}
-function statusText(){if(!snapshot?.generated_at)return 'Snapshot: first build pending';let t=new Date(snapshot.generated_at),mins=Math.max(0,Math.round((Date.now()-t)/60000)),next=nextSchedule();return 'Snapshot: '+t.toLocaleString()+' · '+mins+' min old'+(snapshot.partial?' · partial':'')+' · next scheduled ~'+next.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}
-async function loadSnapshot(){let status=$('st'),errs=$('errs');errs.innerHTML='';status.textContent='Snapshot: loading…';try{let r=await fetch('./data/newspulse.json?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);snapshot=await r.json();if(!snapshot.generated_at){status.textContent='Snapshot: first build pending';errs.innerHTML='<div class="err">The same-origin feed is installed but has not completed its first GDELT snapshot yet. The basemap will remain visible.</div>';render();return}render();status.textContent=statusText();if(snapshot.errors?.length)errs.innerHTML='<div class="err">Snapshot partial: '+esc(snapshot.errors[0])+(snapshot.errors.length>1?' (+'+(snapshot.errors.length-1)+' more)':'')+'</div>'}catch(e){snapshot=null;rows=[];render();status.textContent='Snapshot: unavailable';errs.innerHTML='<div class="err">Same-origin NewsPulse snapshot failed to load: '+esc(e.message)+'</div>'}}
-function initBase(){let b=$('base'),B=[['USGS Imagery Topo','https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}','USGS The National Map',16,0],['USGS Topo','https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}','USGS The National Map',16,1],['USGS Shaded Relief','https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}','USGS The National Map',15,1],['Esri World Street (English labels)','https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}','Tiles © Esri',19,1],['OpenStreetMap','https://tile.openstreetmap.org/{z}/{x}/{y}.png','© OpenStreetMap contributors',18,1],['OpenTopoMap','https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png','© OpenTopoMap, © OpenStreetMap contributors',16,1],['NASA GIBS Blue Marble','https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg','NASA EOSDIS GIBS',8,0]];let base;B.forEach((x,i)=>b.add(new Option(x[0],i)));b.value=3;function set(){if(base)map.removeLayer(base);let x=B[+b.value||0];base=L.tileLayer(x[1],{maxZoom:18,maxNativeZoom:x[3],attribution:x[2]}).addTo(map);base.bringToBack();document.body.classList.toggle('dim',!!x[4])}b.onchange=set;set()}
-initBase();document.querySelectorAll('.topic').forEach(x=>x.onchange=render);$('win').onchange=render;$('refresh').onclick=loadSnapshot;setInterval(()=>{if(!document.hidden&&navigator.onLine!==false)loadSnapshot()},300000);setInterval(()=>{if(snapshot?.generated_at)$('st').textContent=statusText()},30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&navigator.onLine!==false)loadSnapshot()});window.addEventListener('online',loadSnapshot);loadSnapshot();
-</script></body></html>
+  <head>
+    <!-- Google tag (gtag.js) -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-8SVEH8WD1R"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-8SVEH8WD1R");
+    </script>
+    <meta charset="utf-8" />
+    <meta name="mitchellco-map-standard" content="evacwatch-v2" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>NewsPulse | Breaking News Geography</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #101315;
+        --panel: #171b1e;
+        --card: #20262a;
+        --line: #394148;
+        --text: #f6f8f9;
+        --muted: #9eabb3;
+        --unrest: #e6b73f;
+        --violence: #e45d5d;
+        --transport: #55a7ff;
+        --health: #55b98c;
+        --economy: #b785e8;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        font:
+          14px/1.4 system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      header {
+        display: flex;
+        gap: 9px;
+        align-items: center;
+        flex-wrap: wrap;
+        padding: 9px 13px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0;
+      }
+      .sp {
+        flex: 1;
+      }
+      select,
+      button {
+        font: inherit;
+        color: var(--text);
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 5px 7px;
+      }
+      main {
+        display: grid;
+        grid-template-columns: minmax(310px, 390px) 1fr;
+        height: calc(100% - 51px);
+      }
+      aside {
+        overflow: auto;
+        padding: 11px 13px 28px;
+        background: var(--panel);
+        border-right: 1px solid var(--line);
+      }
+      #map {
+        height: 100%;
+        min-height: 440px;
+      }
+      .dim .leaflet-tile-pane {
+        filter: brightness(0.62) saturate(0.78);
+      }
+      h2 {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--muted);
+        margin: 17px 0 6px;
+      }
+      .card {
+        display: block;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 7px;
+        margin: 5px 0;
+      }
+      .row {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+      }
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+      .note,
+      .status,
+      .src,
+      .copy {
+        font-size: 11.5px;
+        color: var(--muted);
+      }
+      .metric {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 12px;
+      }
+      .formula {
+        font:
+          11px/1.5 ui-monospace,
+          monospace;
+        background: #111719;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 7px;
+      }
+      .err {
+        color: #ff8b8b;
+        font-size: 12px;
+      }
+      .src a {
+        color: #9ccaff;
+      }
+      .copy {
+        margin-top: 13px;
+        color: #7d878d;
+      }
+      .pill {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 12px;
+        color: #fff;
+        font-weight: 700;
+        font-size: 11px;
+      }
+      .legend {
+        font-size: 12px;
+      }
+      .legend div {
+        margin: 4px 0;
+        display: flex;
+        gap: 7px;
+        align-items: center;
+      }
+      .leaflet-popup-content {
+        font: 12px/1.45 system-ui;
+        min-width: 260px;
+        max-width: 340px;
+      }
+      .leaflet-popup-content dl {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 2px 8px;
+        margin: 6px 0;
+      }
+      .leaflet-popup-content dd {
+        margin: 0;
+      }
+      .leaflet-popup-content a {
+        color: #2878c7;
+      }
+      .top {
+        margin: 4px 0;
+        padding: 7px 6px;
+        border-bottom: 1px solid var(--line);
+        font-size: 12px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .top:hover,
+      .top:focus {
+        background: #2a3237;
+        outline: none;
+      }
+      .top b {
+        display: inline-block;
+        min-width: 28px;
+      }
+      @media (max-width: 860px) {
+        main {
+          grid-template-columns: 1fr;
+          height: auto;
+        }
+        aside {
+          border-right: 0;
+        }
+        #map {
+          height: 62vh;
+        }
+      }
+
+      /* MitchellCo EvacWatch v2 shared UX standard */
+      .mc-question {
+        font-size: 13px;
+        font-weight: 700;
+        margin: 0 0 10px;
+        color: #fff;
+      }
+      .mc-health-card {
+        background: var(--card, #20262a);
+        border: 1px solid var(--line, #394148);
+        border-radius: 8px;
+        padding: 9px;
+        margin: 8px 0;
+      }
+      .mc-health-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        padding: 3px 0;
+        font-size: 11.5px;
+      }
+      .mc-pill {
+        font-size: 10px;
+        border: 1px solid var(--line, #394148);
+        border-radius: 999px;
+        padding: 1px 6px;
+        white-space: nowrap;
+      }
+      .mc-live {
+        color: #b8efc4;
+      }
+      .mc-retrying {
+        color: #ffbf3f;
+      }
+      .mc-unavailable {
+        color: #ff9c9c;
+      }
+      .mc-cached {
+        color: #9ccaff;
+      }
+      .mc-standard-details {
+        font-size: 11.5px;
+        color: var(--muted, #9eabb3);
+      }
+      .mc-standard-details summary {
+        cursor: pointer;
+        color: var(--text, #f6f8f9);
+      }
+    </style>
+    <script data-mitchellco-runtime="evacwatch-v2">
+      (() => {
+        "use strict";
+        if (window.MCMap?.version === "evacwatch-v2") return;
+        const nativeFetch = window.fetch.bind(window);
+        const inflight = new Map();
+        const sourceState = new Map();
+        const friendly = (host) =>
+          ({
+            "api.weather.gov": "NWS",
+            "waterservices.usgs.gov": "USGS",
+            "earthquake.usgs.gov": "USGS Earthquakes",
+            "services3.arcgis.com": "ArcGIS",
+            "onemap.cdc.gov": "CDC/ATSDR",
+            "tigerweb.geo.census.gov": "U.S. Census",
+            "api.open-meteo.com": "Open-Meteo",
+            "api.tidesandcurrents.noaa.gov": "NOAA CO-OPS",
+          })[host] || host;
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        const retryable = (status) => [429, 502, 503, 504].includes(status);
+        const setState = (url, state, detail = "") => {
+          try {
+            const host = new URL(url, location.href).host;
+            if (!host || host === location.host) return;
+            sourceState.set(host, { state, detail, time: Date.now() });
+            renderHealth();
+          } catch (_) {}
+        };
+        const renderHealth = () => {
+          const root = document.getElementById("mc-runtime-health-list");
+          if (!root) return;
+          const rows = [...sourceState.entries()].sort((a, b) =>
+            a[0].localeCompare(b[0]),
+          );
+          root.innerHTML = rows.length
+            ? rows
+                .map(([host, s]) => {
+                  const cls =
+                    s.state === "Live"
+                      ? "mc-live"
+                      : s.state === "Retrying"
+                        ? "mc-retrying"
+                        : s.state === "Cached"
+                          ? "mc-cached"
+                          : "mc-unavailable";
+                  const age = Math.max(
+                    0,
+                    Math.floor((Date.now() - s.time) / 60000),
+                  );
+                  return `<div class="mc-health-row"><span>${friendly(host)}</span><span class="mc-pill ${cls}">${s.state}${s.detail ? " · " + s.detail : ""}${s.state === "Live" ? ` · ${age < 1 ? "&lt;1" : age}m` : ""}</span></div>`;
+                })
+                .join("")
+            : '<div class="mc-standard-details">Waiting for live sources…</div>';
+        };
+        async function resilientFetch(input, init = {}) {
+          const req =
+            input instanceof Request ? input : new Request(input, init);
+          const method = (req.method || "GET").toUpperCase();
+          if (method !== "GET") return nativeFetch(input, init);
+          const url = req.url;
+          if (inflight.has(url)) {
+            const r = await inflight.get(url);
+            return r.clone();
+          }
+          const task = (async () => {
+            let lastErr;
+            for (let attempt = 0; attempt < 3; attempt++) {
+              const ctl = new AbortController();
+              const timer = setTimeout(() => ctl.abort(), 15000);
+              try {
+                if (attempt) {
+                  setState(url, "Retrying", `attempt ${attempt + 1}/3`);
+                  await sleep(750 * 2 ** (attempt - 1));
+                }
+                const headers = new Headers(req.headers);
+                const r = await nativeFetch(
+                  new Request(req, { signal: ctl.signal, headers }),
+                );
+                clearTimeout(timer);
+                if (r.ok) {
+                  setState(url, "Live");
+                  return r;
+                }
+                lastErr = new Error(`HTTP ${r.status}`);
+                if (!retryable(r.status)) {
+                  setState(url, "Unavailable", `HTTP ${r.status}`);
+                  return r;
+                }
+              } catch (e) {
+                clearTimeout(timer);
+                lastErr = e;
+              }
+            }
+            setState(
+              url,
+              "Unavailable",
+              lastErr?.name === "AbortError" ? "timeout" : "request failed",
+            );
+            throw lastErr || new Error("request failed");
+          })();
+          inflight.set(url, task);
+          try {
+            const r = await task;
+            return r.clone();
+          } finally {
+            inflight.delete(url);
+          }
+        }
+        async function openPopup(layer, map, latlng, zoom = 8) {
+          if (!layer || !map) return;
+          map.closePopup();
+          const target =
+            typeof layer.getLayers === "function" && !layer.getPopup?.()
+              ? layer.getLayers().find((x) => x.getPopup?.())
+              : layer;
+          if (!target?.openPopup) return;
+          const open = () => {
+            try {
+              target.openPopup();
+              target.bringToFront?.();
+            } catch (_) {}
+          };
+          if (
+            latlng &&
+            Number.isFinite(latlng[0]) &&
+            Number.isFinite(latlng[1])
+          ) {
+            map.once("moveend", open);
+            map.flyTo(latlng, zoom, { duration: 0.65 });
+            setTimeout(open, 900);
+          } else open();
+        }
+        function makeGenerationGuard(state, key = "generation") {
+          state[key] = Number(state[key] || 0);
+          return {
+            next() {
+              state[key] += 1;
+              return state[key];
+            },
+            current() {
+              return state[key];
+            },
+            valid(token) {
+              return token === state[key];
+            },
+          };
+        }
+        window.MCMap = {
+          version: "evacwatch-v2",
+          nativeFetch,
+          fetch: resilientFetch,
+          openPopup,
+          makeGenerationGuard,
+          sourceState,
+        };
+        window.fetch = resilientFetch;
+        document.addEventListener("DOMContentLoaded", () => {
+          renderHealth();
+          setInterval(renderHealth, 30000);
+        });
+      })();
+    </script>
+  </head>
+  <body>
+    <header>
+      <h1>NewsPulse: Breaking News Geography</h1>
+      <span class="sp"></span
+      ><label
+        >Basemap
+        <select id="base"></select></label
+      ><label
+        >Window
+        <select id="win">
+          <option value="6">6 hours</option>
+          <option value="12">12 hours</option>
+        </select></label
+      ><button id="refresh">Refresh</button>
+    </header>
+    <main>
+      <aside>
+        <div class="mc-question">
+          Where are breaking events accelerating beyond normal news activity?
+        </div>
+        <div class="mc-health-card" id="mc-runtime-health">
+          <b>Data health</b>
+          <div id="mc-runtime-health-list">
+            <div class="mc-standard-details">Waiting for live sources…</div>
+          </div>
+        </div>
+        <details
+          class="mc-health-card mc-standard-details"
+          data-mitchellco-fusion="hazard-exposure-consequence"
+        >
+          <summary><b>How to read this map</b></summary>
+          <div style="margin-top: 7px">
+            <b>Hazard / signal:</b> Current event / news acceleration<br /><b
+              >Exposure:</b
+            >
+            Geographic concentration and distinct sources<br /><b
+              >Consequence / vulnerability:</b
+            >
+            Attention signal, not event severity<br /><br />Official/source
+            values remain distinct from MitchellCo derived screening scores or
+            estimates. Derived values are for prioritization and interpretation,
+            not official warnings or predictions.
+          </div>
+        </details>
+
+        <h2>Topics</h2>
+        <label class="card"
+          ><span class="row"
+            ><input
+              class="topic"
+              data-k="unrest"
+              type="checkbox"
+              checked
+            /><span class="dot" style="background: var(--unrest)"></span
+            ><b>Unrest / protest</b></span
+          ></label
+        >
+        <label class="card"
+          ><span class="row"
+            ><input
+              class="topic"
+              data-k="violence"
+              type="checkbox"
+              checked
+            /><span class="dot" style="background: var(--violence)"></span
+            ><b>Explosion / shooting</b></span
+          ></label
+        >
+        <label class="card"
+          ><span class="row"
+            ><input
+              class="topic"
+              data-k="transport"
+              type="checkbox"
+              checked
+            /><span class="dot" style="background: var(--transport)"></span
+            ><b>Transportation disruption</b></span
+          ></label
+        >
+        <label class="card"
+          ><span class="row"
+            ><input
+              class="topic"
+              data-k="health"
+              type="checkbox"
+              checked
+            /><span class="dot" style="background: var(--health)"></span
+            ><b>Disease / outbreak</b></span
+          ></label
+        >
+        <label class="card"
+          ><span class="row"
+            ><input
+              class="topic"
+              data-k="economy"
+              type="checkbox"
+              checked
+            /><span class="dot" style="background: var(--economy)"></span
+            ><b>Layoff / closure / bankruptcy</b></span
+          ></label
+        >
+        <div class="legend">
+          <div>
+            <span
+              class="dot"
+              style="width: 8px; height: 8px; background: #bbb"
+            ></span
+            >smaller = lower current article-location count
+          </div>
+          <div>
+            <span
+              class="dot"
+              style="width: 16px; height: 16px; background: #bbb"
+            ></span
+            >larger = higher current count
+          </div>
+        </div>
+        <h2>What this map means</h2>
+        <p class="note">
+          GDELT geolocates places mentioned near breaking-news topics across
+          global coverage. A keyless GitHub Actions job reads GDELT's raw
+          15-minute files via lastupdate.txt and writes a same-origin snapshot
+          for this page. Media volume is attention, not event severity, and
+          automated classification/geocoding can still be wrong.
+        </p>
+        <h2>Derived news intensity</h2>
+        <div class="formula">
+          <b>Acceleration = current hourly rate / trailing hourly rate</b
+          ><br />Current rate = current count / selected hours<br />Trailing
+          rate = max(0.25, (48h count - current count) / (48 - selected
+          hours))<br />Intensity = min(100, 20×ln(1+current count) +
+          25×ln(max(1,acceleration)))
+        </div>
+        <p class="note">
+          Derived/non-official. It measures acceleration and volume only. It
+          does not measure casualties, damage, truth, importance or severity.
+        </p>
+        <h2>Live status</h2>
+        <div class="metric">
+          <span>Mapped locations</span><b id="locs">0</b>
+        </div>
+        <div class="metric">
+          <span>Visible source domains</span><b id="domains">0</b>
+        </div>
+        <div class="metric">
+          <span>Fastest acceleration</span><b id="fast">—</b>
+        </div>
+        <p class="status" id="st">Snapshot: loading…</p>
+        <div id="errs"></div>
+        <h2>Top accelerating locations</h2>
+        <div id="top"><p class="note">Waiting for snapshot.</p></div>
+        <h2>Refresh / provenance</h2>
+        <p class="note">
+          GDELT publishes raw update files about every 15 minutes. The
+          repository snapshot job is scheduled at :07 and :37 each hour. This
+          page checks the same-origin snapshot every 5 minutes, so a new
+          GitHub-generated snapshot should appear shortly after the scheduled
+          job finishes.
+        </p>
+        <h2>Sources</h2>
+        <p class="src">
+          <a
+            href="https://data.gdeltproject.org/gdeltv2/lastupdate.txt"
+            target="_blank"
+            >GDELT 2.0 lastupdate.txt</a
+          >
+          ·
+          <a
+            href="https://blog.gdeltproject.org/gdelt-2-0-our-global-world-in-realtime/"
+            target="_blank"
+            >GDELT 2.0 raw feeds</a
+          ><br />Basemaps: Esri World Street Map, USGS The National Map,
+          OpenStreetMap, OpenTopoMap and NASA EOSDIS GIBS. GDELT extraction and
+          geocoding can contain false positives or ambiguous locations.
+        </p>
+        <div class="copy">
+          © 2026 MitchellCo Inc. Original interface and integration logic only.
+        </div>
+      </aside>
+      <div id="map"></div>
+    </main>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+      const $ = (x) => document.getElementById(x),
+        map = L.map("map", { preferCanvas: true, worldCopyJump: true }).setView(
+          [25, 0],
+          2,
+        ),
+        layer = L.layerGroup().addTo(map);
+      let snapshot = null,
+        rows = [];
+      const TOPICS = {
+        unrest: { label: "Unrest / protest", c: "#e6b73f" },
+        violence: { label: "Explosion / shooting", c: "#e45d5d" },
+        transport: { label: "Transportation disruption", c: "#55a7ff" },
+        health: { label: "Disease / outbreak", c: "#55b98c" },
+        economy: { label: "Layoff / closure / bankruptcy", c: "#b785e8" },
+      };
+      function esc(s) {
+        return String(s ?? "").replace(
+          /[<>&"]/g,
+          (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c],
+        );
+      }
+      function enabled(k) {
+        return document.querySelector('.topic[data-k="' + k + '"]').checked;
+      }
+      function krow(x) {
+        return (
+          x.name.toLowerCase() +
+          "|" +
+          (+x.lat).toFixed(2) +
+          "|" +
+          (+x.lon).toFixed(2)
+        );
+      }
+      function buildRows() {
+        rows = [];
+        if (!snapshot?.windows) return;
+        let h = $("win").value,
+          w = snapshot.windows[h] || {};
+        Object.keys(TOPICS).forEach((k) => {
+          let d = w[k];
+          if (!d) return;
+          let bm = new Map(
+            (d.baseline || []).map((x) => [krow(x), Number(x.count) || 0]),
+          );
+          (d.current || []).forEach((x) => {
+            let b = bm.get(krow(x)) || 0,
+              count = Number(x.count) || 1,
+              trail = Math.max(0.25, Math.max(0, b - count) / (48 - +h)),
+              rate = count / +h,
+              acc = rate / trail,
+              intensity = Math.min(
+                100,
+                20 * Math.log1p(count) + 25 * Math.log(Math.max(1, acc)),
+              );
+            rows.push({ ...x, k, base: b, count, acc, intensity });
+          });
+        });
+      }
+      function radius(x) {
+        return Math.max(
+          5,
+          Math.min(20, 4 + Math.sqrt(Math.max(1, x.count)) * 2.2),
+        );
+      }
+      function opacity(x) {
+        return 0.55 + 0.4 * Math.min(1, x.intensity / 100);
+      }
+      function render() {
+        buildRows();
+        layer.clearLayers();
+        let vis = rows.filter((x) => enabled(x.k)),
+          ds = new Set();
+        vis.forEach((x) => (x.domains || []).forEach((d) => ds.add(d)));
+        vis.forEach((x) => {
+          let t = TOPICS[x.k],
+            links =
+              (x.links || [])
+                .slice(0, 5)
+                .map(
+                  (a) =>
+                    '<li><a href="' +
+                    esc(a.href) +
+                    '" target="_blank" rel="noopener">' +
+                    esc(a.text || a.href) +
+                    "</a></li>",
+                )
+                .join("") || "<li>No representative link exposed</li>",
+            m = L.circleMarker([x.lat, x.lon], {
+              radius: radius(x),
+              color: "#111",
+              weight: 1.5,
+              fillColor: t.c,
+              fillOpacity: opacity(x),
+            });
+          m.bindPopup(
+            "<b>" +
+              esc(x.name) +
+              '</b><br><span class="pill" style="background:' +
+              t.c +
+              '">' +
+              esc(t.label) +
+              "</span><dl><dt>Current count</dt><dd>" +
+              x.count +
+              "</dd><dt>48h count</dt><dd>" +
+              x.base +
+              "</dd><dt>Acceleration</dt><dd>" +
+              x.acc.toFixed(1) +
+              "×</dd><dt>Derived intensity</dt><dd>" +
+              x.intensity.toFixed(0) +
+              "/100</dd><dt>Visible domains</dt><dd>" +
+              (x.domains || []).length +
+              "</dd></dl><b>Representative links</b><ul>" +
+              links +
+              "</ul><p>Links are only retained when the GDELT topic-theme occurrence is near the mapped location occurrence in the source document.</p>",
+          ).addTo(layer);
+          x._marker = m;
+        });
+        $("locs").textContent = vis.length;
+        $("domains").textContent = ds.size;
+        let top = [...vis]
+          .sort((a, b) => b.acc - a.acc || b.count - a.count)
+          .slice(0, 6);
+        $("fast").textContent = top[0] ? top[0].acc.toFixed(1) + "×" : "—";
+        $("top").innerHTML =
+          top
+            .map(
+              (x, i) =>
+                '<div class="top" tabindex="0" role="button" data-i="' +
+                i +
+                '"><b>#' +
+                (i + 1) +
+                "</b> " +
+                esc(x.name) +
+                " · " +
+                esc(TOPICS[x.k].label) +
+                " · <strong>" +
+                x.acc.toFixed(1) +
+                "×</strong> · n=" +
+                x.count +
+                "</div>",
+            )
+            .join("") ||
+          '<p class="note">No current mapped matches in the snapshot.</p>';
+        document.querySelectorAll(".top[data-i]").forEach((el) => {
+          let go = () => {
+            let x = top[+el.dataset.i];
+            if (!x) return;
+            map.setView([x.lat, x.lon], Math.max(8, map.getZoom()));
+            setTimeout(() => x._marker?.openPopup(), 180);
+          };
+          el.onclick = go;
+          el.onkeydown = (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              go();
+            }
+          };
+        });
+      }
+      function nextSchedule(now = new Date()) {
+        let n = new Date(now);
+        n.setSeconds(0, 0);
+        let m = n.getMinutes();
+        if (m < 7) n.setMinutes(7);
+        else if (m < 37) n.setMinutes(37);
+        else {
+          n.setHours(n.getHours() + 1);
+          n.setMinutes(7);
+        }
+        return n;
+      }
+      function statusText() {
+        if (!snapshot?.generated_at) return "Snapshot: first build pending";
+        let t = new Date(snapshot.generated_at),
+          mins = Math.max(0, Math.round((Date.now() - t) / 60000)),
+          next = nextSchedule();
+        return (
+          "Snapshot: " +
+          t.toLocaleString() +
+          " · " +
+          mins +
+          " min old" +
+          (snapshot.partial ? " · partial" : "") +
+          " · next scheduled ~" +
+          next.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+        );
+      }
+      async function loadSnapshot() {
+        let status = $("st"),
+          errs = $("errs");
+        errs.innerHTML = "";
+        status.textContent = "Snapshot: loading…";
+        try {
+          let r = await fetch("./data/newspulse.json?v=" + Date.now(), {
+            cache: "no-store",
+          });
+          if (!r.ok) throw Error("HTTP " + r.status);
+          snapshot = await r.json();
+          if (!snapshot.generated_at) {
+            status.textContent = "Snapshot: first build pending";
+            errs.innerHTML =
+              '<div class="err">The same-origin feed is installed but has not completed its first GDELT snapshot yet. The basemap will remain visible.</div>';
+            render();
+            return;
+          }
+          render();
+          status.textContent = statusText();
+          if (snapshot.errors?.length)
+            errs.innerHTML =
+              '<div class="err">Snapshot partial: ' +
+              esc(snapshot.errors[0]) +
+              (snapshot.errors.length > 1
+                ? " (+" + (snapshot.errors.length - 1) + " more)"
+                : "") +
+              "</div>";
+        } catch (e) {
+          snapshot = null;
+          rows = [];
+          render();
+          status.textContent = "Snapshot: unavailable";
+          errs.innerHTML =
+            '<div class="err">Same-origin NewsPulse snapshot failed to load: ' +
+            esc(e.message) +
+            "</div>";
+        }
+      }
+      function initBase() {
+        let b = $("base"),
+          B = [
+            [
+              "USGS Imagery Topo",
+              "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}",
+              "USGS The National Map",
+              16,
+              0,
+            ],
+            [
+              "USGS Topo",
+              "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
+              "USGS The National Map",
+              16,
+              1,
+            ],
+            [
+              "USGS Shaded Relief",
+              "https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}",
+              "USGS The National Map",
+              15,
+              1,
+            ],
+            [
+              "Esri World Street (English labels)",
+              "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+              "Tiles © Esri",
+              19,
+              1,
+            ],
+            [
+              "OpenStreetMap",
+              "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+              "© OpenStreetMap contributors",
+              18,
+              1,
+            ],
+            [
+              "OpenTopoMap",
+              "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+              "© OpenTopoMap, © OpenStreetMap contributors",
+              16,
+              1,
+            ],
+            [
+              "NASA GIBS Blue Marble",
+              "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg",
+              "NASA EOSDIS GIBS",
+              8,
+              0,
+            ],
+          ];
+        let base;
+        B.forEach((x, i) => b.add(new Option(x[0], i)));
+        b.value = 3;
+        function set() {
+          if (base) map.removeLayer(base);
+          let x = B[+b.value || 0];
+          base = L.tileLayer(x[1], {
+            maxZoom: 18,
+            maxNativeZoom: x[3],
+            attribution: x[2],
+          }).addTo(map);
+          base.bringToBack();
+          document.body.classList.toggle("dim", !!x[4]);
+        }
+        b.onchange = set;
+        set();
+      }
+      initBase();
+      document.querySelectorAll(".topic").forEach((x) => (x.onchange = render));
+      $("win").onchange = render;
+      $("refresh").onclick = loadSnapshot;
+      setInterval(() => {
+        if (!document.hidden && navigator.onLine !== false) loadSnapshot();
+      }, 300000);
+      setInterval(() => {
+        if (snapshot?.generated_at) $("st").textContent = statusText();
+      }, 30000);
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden && navigator.onLine !== false) loadSnapshot();
+      });
+      window.addEventListener("online", loadSnapshot);
+      loadSnapshot();
+    </script>
+  </body>
+</html>
