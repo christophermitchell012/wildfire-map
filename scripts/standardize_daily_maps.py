@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Apply the MitchellCo EvacWatch v2 UX/reliability standard to daily maps.
+"""Apply the MitchellCo EvacWatch UX/reliability/performance standard.
 
-This script is deliberately conservative: it adds a shared resilient runtime, a
-standard data-health panel when one is missing, and map-specific fusion framing
-for maps 01-13. It does not rewrite each map's analytical model.
+The shared runtime incorporates lessons from EvacWatch Map 07 and GridWatch
+Map 09: resilient GETs, longer network timeouts without blocking the UI,
+in-flight request coalescing, stale-region cancellation, cooperative yielding,
+bounded async helpers, popup navigation safeguards, and progressive data health.
 
 Run with --check to fail when a daily map is not standardized.
 """
@@ -16,6 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MAP_DIR = ROOT / "daily-maps"
 STANDARD = "evacwatch-v2"
+PERFORMANCE = "gridwatch-v1"
 
 QUESTIONS = {
     "01": "Where are flood conditions overlapping with exposed and vulnerable communities?",
@@ -55,18 +57,22 @@ CSS = r"""
 """.strip()
 
 RUNTIME = r"""
-<script data-mitchellco-runtime="evacwatch-v2">
+<script data-mitchellco-runtime="evacwatch-v2" data-mitchellco-performance="gridwatch-v1">
 (() => {
   'use strict';
-  if (window.MCMap?.version === 'evacwatch-v2') return;
+  if (window.MCMap?.performance === 'gridwatch-v1') return;
   const nativeFetch = window.fetch.bind(window);
   const inflight = new Map();
+  const controllers = new Set();
   const sourceState = new Map();
+  let globalGeneration = 0;
   const friendly = host => ({
     'api.weather.gov':'NWS',
     'waterservices.usgs.gov':'USGS',
     'earthquake.usgs.gov':'USGS Earthquakes',
     'services3.arcgis.com':'ArcGIS',
+    'services5.arcgis.com':'ArcGIS',
+    'services2.arcgis.com':'ArcGIS',
     'onemap.cdc.gov':'CDC/ATSDR',
     'tigerweb.geo.census.gov':'U.S. Census',
     'api.open-meteo.com':'Open-Meteo',
@@ -74,6 +80,27 @@ RUNTIME = r"""
   }[host] || host);
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const retryable = status => [429, 502, 503, 504].includes(status);
+  const yieldControl = () => new Promise(resolve => {
+    if (!document.hidden && typeof requestAnimationFrame === 'function') requestAnimationFrame(() => resolve());
+    else setTimeout(resolve, 0);
+  });
+  const idle = (timeout=120) => new Promise(resolve => {
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(() => resolve(), {timeout});
+    else setTimeout(resolve, Math.min(timeout, 40));
+  });
+  async function mapLimit(items, limit, fn) {
+    const out = new Array(items.length);
+    let next = 0;
+    async function worker() {
+      while (next < items.length) {
+        const i = next++;
+        out[i] = await fn(items[i], i);
+        await yieldControl();
+      }
+    }
+    await Promise.all(Array.from({length:Math.min(Math.max(1, limit), items.length)}, worker));
+    return out;
+  }
   const setState = (url, state, detail='') => {
     try {
       const host = new URL(url, location.href).host;
@@ -92,20 +119,38 @@ RUNTIME = r"""
       return `<div class="mc-health-row"><span>${friendly(host)}</span><span class="mc-pill ${cls}">${s.state}${s.detail ? ' · '+s.detail : ''}${s.state==='Live' ? ` · ${age<1?'&lt;1':age}m` : ''}</span></div>`;
     }).join('') : '<div class="mc-standard-details">Waiting for live sources…</div>';
   };
+  function abortAll() {
+    globalGeneration += 1;
+    for (const ctl of [...controllers]) {
+      try { ctl.abort(); } catch (_) {}
+    }
+    controllers.clear();
+    inflight.clear();
+  }
   async function resilientFetch(input, init={}) {
     const req = input instanceof Request ? input : new Request(input, init);
     const method = (req.method || 'GET').toUpperCase();
     if (method !== 'GET') return nativeFetch(input, init);
     const url = req.url;
-    if (inflight.has(url)) {
-      const r = await inflight.get(url);
+    const accept = req.headers.get('accept') || '';
+    const requestKey = `${method}|${url}|${accept}`;
+    if (inflight.has(requestKey)) {
+      const r = await inflight.get(requestKey);
       return r.clone();
     }
+    const generation = globalGeneration;
     const task = (async () => {
       let lastErr;
       for (let attempt=0; attempt<3; attempt++) {
+        if (generation !== globalGeneration) throw new DOMException('stale region', 'AbortError');
         const ctl = new AbortController();
-        const timer = setTimeout(() => ctl.abort(), 15000);
+        controllers.add(ctl);
+        const onParentAbort = () => ctl.abort();
+        if (req.signal) {
+          if (req.signal.aborted) ctl.abort();
+          else req.signal.addEventListener('abort', onParentAbort, {once:true});
+        }
+        const timer = setTimeout(() => ctl.abort(), 25000);
         try {
           if (attempt) {
             setState(url, 'Retrying', `attempt ${attempt+1}/3`);
@@ -113,7 +158,7 @@ RUNTIME = r"""
           }
           const headers = new Headers(req.headers);
           const r = await nativeFetch(new Request(req, {signal:ctl.signal, headers}));
-          clearTimeout(timer);
+          if (generation !== globalGeneration) throw new DOMException('stale region', 'AbortError');
           if (r.ok) {
             setState(url, 'Live');
             return r;
@@ -124,19 +169,23 @@ RUNTIME = r"""
             return r;
           }
         } catch (e) {
-          clearTimeout(timer);
           lastErr = e;
+          if (e?.name === 'AbortError' || generation !== globalGeneration) throw e;
+        } finally {
+          clearTimeout(timer);
+          controllers.delete(ctl);
+          req.signal?.removeEventListener?.('abort', onParentAbort);
         }
       }
       setState(url, 'Unavailable', lastErr?.name === 'AbortError' ? 'timeout' : 'request failed');
       throw lastErr || new Error('request failed');
     })();
-    inflight.set(url, task);
+    inflight.set(requestKey, task);
     try {
       const r = await task;
       return r.clone();
     } finally {
-      inflight.delete(url);
+      inflight.delete(requestKey);
     }
   }
   async function openPopup(layer, map, latlng, zoom=8) {
@@ -148,7 +197,7 @@ RUNTIME = r"""
     if (latlng && Number.isFinite(latlng[0]) && Number.isFinite(latlng[1])) {
       map.once('moveend', open);
       map.flyTo(latlng, zoom, {duration:.65});
-      setTimeout(open, 900);
+      setTimeout(open, 950);
     } else open();
   }
   function makeGenerationGuard(state, key='generation') {
@@ -159,9 +208,19 @@ RUNTIME = r"""
       valid(token){ return token === state[key]; }
     };
   }
-  window.MCMap = {version:'evacwatch-v2', nativeFetch, fetch:resilientFetch, openPopup, makeGenerationGuard, sourceState};
+  window.MCMap = {
+    version:'evacwatch-v2', performance:'gridwatch-v1', nativeFetch,
+    fetch:resilientFetch, openPopup, makeGenerationGuard, sourceState,
+    abortAll, yieldControl, idle, mapLimit, generation:() => globalGeneration
+  };
   window.fetch = resilientFetch;
-  document.addEventListener('DOMContentLoaded', () => { renderHealth(); setInterval(renderHealth, 30000); });
+  document.addEventListener('change', e => {
+    if (e.target?.id === 'region') abortAll();
+  }, true);
+  document.addEventListener('DOMContentLoaded', () => {
+    renderHealth();
+    setInterval(renderHealth, 30000);
+  });
 })();
 </script>
 """.strip()
@@ -184,7 +243,7 @@ def standard_block(num: str, text: str) -> str:
     if 'id="mc-runtime-health"' not in text and re.search(r">\s*Data health\s*<", text, re.I) is None:
         parts.append('<div class="mc-health-card" id="mc-runtime-health"><b>Data health</b><div id="mc-runtime-health-list"><div class="mc-standard-details">Waiting for live sources…</div></div></div>')
     if 'data-mitchellco-fusion=' not in text and num in FUSION:
-        h,e,c = FUSION[num]
+        h, e, c = FUSION[num]
         parts.append(
             '<details class="mc-health-card mc-standard-details" data-mitchellco-fusion="hazard-exposure-consequence">'
             '<summary><b>How to read this map</b></summary>'
@@ -208,8 +267,20 @@ def transform(path: Path) -> tuple[str, bool]:
             text = text.replace('</style>', '\n' + CSS + '\n</style>', 1)
         else:
             text = text.replace('</head>', '<style>\n' + CSS + '\n</style>\n</head>', 1)
-    if 'data-mitchellco-runtime="evacwatch-v2"' not in text:
+
+    runtime_re = re.compile(
+        r'<script\s+data-mitchellco-runtime=["\']evacwatch-v2["\'][^>]*>.*?</script>',
+        re.I | re.S,
+    )
+    if runtime_re.search(text):
+        text = runtime_re.sub(RUNTIME, text, count=1)
+    else:
         text = text.replace('</head>', RUNTIME + '\n</head>', 1)
+
+    # Existing maps already use zero-delay yields in several expensive loops.
+    # Upgrade those yields to requestAnimationFrame-aware cooperative scheduling.
+    text = text.replace('await sleep0();', 'await MCMap.yieldControl();')
+
     num = path.name[:2]
     block = standard_block(num, text)
     if block:
@@ -223,6 +294,12 @@ def check(path: Path, text: str) -> list[str]:
         errs.append('missing map-standard meta')
     if 'data-mitchellco-runtime="evacwatch-v2"' not in text:
         errs.append('missing resilient runtime')
+    if f'data-mitchellco-performance="{PERFORMANCE}"' not in text:
+        errs.append('missing GridWatch performance runtime')
+    if 'yieldControl' not in text or 'mapLimit' not in text:
+        errs.append('missing cooperative/bounded async helpers')
+    if '25000' not in text:
+        errs.append('shared live-request timeout has not been raised to 25 seconds')
     num = path.name[:2]
     if num in QUESTIONS and 'class="question"' not in text and 'class="mc-question"' not in text:
         errs.append('missing map question')
@@ -232,17 +309,14 @@ def check(path: Path, text: str) -> list[str]:
         errs.append('missing required GA4 tag')
     if '© 2026 MitchellCo Inc.' not in text:
         errs.append('missing MitchellCo copyright')
-    # Safeguard from Map 07 bug #1: NWS alerts often have null geometry.
     if 'api.weather.gov/alerts' in text and ('Red Flag Warning' in text or 'Fire Weather Watch' in text):
         if 'affectedZones' not in text:
             errs.append('NWS fire-weather alerts used without affectedZones geometry resolution safeguard')
-    # Safeguard from Map 07 bug #2: ranked rows must open the popup-owning layer after movement.
     if re.search(r'rank|highest', text, re.I) and 'openPopup' in text and ('flyTo' in text or 'fitBounds' in text):
         if 'MCMap.openPopup' not in text and 'moveend' not in text:
             errs.append('ranked popup navigation lacks moveend/MCMap.openPopup safeguard')
-    # Region changes can leave stale async results unless generation/abort semantics exist.
-    if re.search(r'id=["\']region["\']', text, re.I) and 'onchange' in text:
-        if not re.search(r'generation|AbortController|requestToken|loadToken', text, re.I):
+    if re.search(r'id=["\']region["\']', text, re.I) and ('onchange' in text or 'addEventListener' in text):
+        if not re.search(r'generation|AbortController|requestToken|loadToken|MCMap\.abortAll', text, re.I):
             errs.append('region selector lacks stale-request generation/abort safeguard')
     return errs
 
@@ -273,7 +347,7 @@ def main() -> int:
             for e in errs:
                 print(f'  - {e}')
         return 1
-    print(f'Validated {len(files)} daily maps against {STANDARD}.')
+    print(f'Validated {len(files)} daily maps against {STANDARD} + {PERFORMANCE}.')
     return 0
 
 if __name__ == '__main__':
