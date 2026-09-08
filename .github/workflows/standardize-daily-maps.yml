@@ -6,6 +6,7 @@ on:
     paths:
       - 'daily-maps/*.html'
       - 'scripts/standardize_daily_maps.py'
+      - 'scripts/optimize_gridwatch.py'
       - '.github/workflows/standardize-daily-maps.yml'
 
 permissions:
@@ -27,6 +28,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      - name: Optimize GridWatch Map 09
+        run: python scripts/optimize_gridwatch.py
 
       - name: Ensure required footer copyright
         run: |
@@ -64,5 +68,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add daily-maps/*.html
-          git commit -m 'Standardize daily maps [map-standard]'
+          git commit -m 'Optimize GridWatch performance [map-standard]'
           git push
