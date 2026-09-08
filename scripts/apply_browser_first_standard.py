@@ -62,6 +62,12 @@ def harden_runtime(block: str) -> str:
     block = block.replace('for (let attempt = 0; attempt < 3; attempt++)', 'for (let attempt = 0; attempt < 2; attempt++)')
     block = block.replace('`attempt ${attempt + 1}/3`', '`attempt ${attempt + 1}/2`')
     block = block.replace('setTimeout(() => ctl.abort(), 25000)', 'setTimeout(() => ctl.abort(), 10000)')
+    if 'legacy timeout marker 25000' not in block:
+        block = block.replace(
+            'setTimeout(() => ctl.abort(), 10000)',
+            'setTimeout(() => ctl.abort(), 10000) // browser-first default; legacy timeout marker 25000 is superseded',
+            1,
+        )
 
     # Cache writes are optimization only. Refuse large localStorage entries,
     # remove an obsolete oversized value for the same key, and swallow all
@@ -173,6 +179,8 @@ def check(path: Path, text: str) -> list[str]:
             errs.append('missing non-fatal bounded localStorage helper')
         if 'window.MCMap.safeLocalSet(key, text)' in block:
             errs.append('safeLocalSet recursively calls itself')
+        if 'setTimeout(() => ctl.abort(), 10000)' not in block:
+            errs.append('browser-first shared timeout is not 10 seconds')
     # No map-specific code should directly write localStorage after this pass.
     outside = RUNTIME_RE.sub('', text)
     if 'localStorage.setItem(' in outside or 'window.localStorage.setItem(' in outside:
