@@ -1,0 +1,60 @@
+name: Daily Map Quality Gate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'daily-maps/*.html'
+      - 'scripts/standardize_daily_maps.py'
+      - '.github/workflows/daily-map-quality.yml'
+      - '.github/workflows/standardize-daily-maps.yml'
+  pull_request:
+    paths:
+      - 'daily-maps/*.html'
+      - 'scripts/standardize_daily_maps.py'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate map standard and Map 07 regression safeguards
+        run: python scripts/standardize_daily_maps.py --check
+
+      - name: Verify pretty-printed HTML
+        run: npx --yes prettier@3.3.3 --check 'daily-maps/*.html'
+
+      - name: Check inline JavaScript syntax
+        shell: bash
+        run: |
+          python - <<'PY'
+          import html, pathlib, re, subprocess, tempfile, sys
+          bad = []
+          for path in sorted(pathlib.Path('daily-maps').glob('[0-9][0-9]-*.html')):
+              text = path.read_text(encoding='utf-8')
+              scripts = re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', text, flags=re.I|re.S)
+              for i, body in enumerate(scripts, 1):
+                  body = html.unescape(body)
+                  with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f:
+                      f.write(body)
+                      tmp = f.name
+                  p = subprocess.run(['node', '--check', tmp], capture_output=True, text=True)
+                  pathlib.Path(tmp).unlink(missing_ok=True)
+                  if p.returncode:
+                      bad.append((path.name, i, p.stderr.strip()))
+          if bad:
+              for name, idx, err in bad:
+                  print(f'{name} inline script #{idx}:\n{err}')
+              sys.exit(1)
+          print('All inline JavaScript passed node --check.')
+          PY
