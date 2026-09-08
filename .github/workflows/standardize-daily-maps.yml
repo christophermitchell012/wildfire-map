@@ -28,11 +28,32 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Ensure required footer copyright
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          for path in sorted(Path('daily-maps').glob('[0-9][0-9]-*.html')):
+              text = path.read_text(encoding='utf-8')
+              if '© 2026 MitchellCo Inc.' in text:
+                  continue
+              footer = '<div class="copy">© 2026 MitchellCo Inc.</div>'
+              if '</aside>' in text:
+                  text = text.replace('</aside>', footer + '\n</aside>', 1)
+              elif '</body>' in text:
+                  text = text.replace('</body>', footer + '\n</body>', 1)
+              else:
+                  raise SystemExit(f'{path}: cannot place copyright footer')
+              path.write_text(text, encoding='utf-8', newline='\n')
+          PY
+
       - name: Apply EvacWatch v2 standard
         run: python scripts/standardize_daily_maps.py || true
 
       - name: Pretty-print all map HTML
         run: npx --yes prettier@3.3.3 --write 'daily-maps/*.html'
+
+      - name: Validate standard before commit
+        run: python scripts/standardize_daily_maps.py --check
 
       - name: Commit standardized maps
         run: |
