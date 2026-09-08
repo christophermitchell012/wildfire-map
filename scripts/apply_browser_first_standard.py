@@ -37,13 +37,15 @@ def harden_runtime(block: str) -> str:
         flags=re.S,
     )
 
-    # One timeout/retry owner: callers that already supply an AbortSignal own
-    # timeout/retry behavior. The shared wrapper observes status but does not nest.
+    # One timeout/retry owner: an explicit caller-supplied signal means the
+    # source-specific loader owns cancellation/timeout policy. Request.signal is
+    # always present, so only init.signal is a reliable signal that the caller
+    # intentionally supplied its own controller in these maps.
     needle = 'if (method !== "GET") return nativeFetch(input, init);'
     if needle in block and 'Caller-supplied AbortSignal owns timeout/retry.' not in block:
         repl = '''if (method !== "GET") return nativeFetch(input, init);
           // Caller-supplied AbortSignal owns timeout/retry. Do not nest another layer.
-          if (req.signal) {
+          if (init?.signal) {
             try {
               const r = await nativeFetch(input, init);
               setState(req.url, r.ok ? "Live" : "Unavailable", r.ok ? "" : `HTTP ${r.status}`);
@@ -56,27 +58,32 @@ def harden_runtime(block: str) -> str:
         block = block.replace(needle, repl, 1)
 
     # Shared default is intentionally modest. Source-specific loaders may own a
-    # longer measured timeout by passing their own signal.
+    # longer measured timeout by passing their own explicit signal.
     block = block.replace('for (let attempt = 0; attempt < 3; attempt++)', 'for (let attempt = 0; attempt < 2; attempt++)')
     block = block.replace('`attempt ${attempt + 1}/3`', '`attempt ${attempt + 1}/2`')
     block = block.replace('setTimeout(() => ctl.abort(), 25000)', 'setTimeout(() => ctl.abort(), 10000)')
 
-    # Cache writes are optimization only. Refuse large localStorage entries and
-    # swallow quota/storage errors so live data remains valid.
+    # Cache writes are optimization only. Refuse large localStorage entries,
+    # remove an obsolete oversized value for the same key, and swallow all
+    # quota/storage errors so live data remains valid.
     if 'function safeLocalSet(' not in block:
         insertion = '''
         function safeLocalSet(key, value, maxBytes = 262144) {
           try {
             const text = String(value);
-            if (text.length * 2 > maxBytes) return false;
-            localStorage.setItem(key, text);
+            if (text.length * 2 > maxBytes) {
+              try { window.localStorage.removeItem(key); } catch (_) {}
+              return false;
+            }
+            window.localStorage.setItem(key, text);
             return true;
           } catch (_) {
+            try { window.localStorage.removeItem(key); } catch (_) {}
             return false;
           }
         }
         function safeLocalGet(key) {
-          try { return localStorage.getItem(key); } catch (_) { return null; }
+          try { return window.localStorage.getItem(key); } catch (_) { return null; }
         }
         function debounce(fn, wait = 150) {
           let timer = 0;
@@ -105,6 +112,17 @@ def harden_runtime(block: str) -> str:
     return block
 
 
+def replace_direct_cache_writes(text: str) -> str:
+    """Replace direct map cache writes, but never rewrite the shared runtime."""
+    m = RUNTIME_RE.search(text)
+    if not m:
+        return text.replace('localStorage.setItem(', 'window.MCMap.safeLocalSet(')
+    before = text[:m.start()].replace('localStorage.setItem(', 'window.MCMap.safeLocalSet(')
+    runtime = m.group(0)
+    after = text[m.end():].replace('localStorage.setItem(', 'window.MCMap.safeLocalSet(')
+    return before + runtime + after
+
+
 def transform(path: Path) -> tuple[str, bool]:
     text = path.read_text(encoding="utf-8")
     original = text
@@ -116,13 +134,13 @@ def transform(path: Path) -> tuple[str, bool]:
         else:
             text = text.replace('</head>', '    ' + MARKER + '\n  </head>', 1)
 
+    # Guard map-specific localStorage writes before injecting the helper, so the
+    # helper's own window.localStorage.setItem cannot be rewritten recursively.
+    text = replace_direct_cache_writes(text)
+
     m = RUNTIME_RE.search(text)
     if m:
         text = text[: m.start()] + harden_runtime(m.group(0)) + text[m.end() :]
-
-    # Existing direct localStorage writes now use the guarded helper. This is
-    # deliberately a small-cache policy: entries above 256 KiB are not stored.
-    text = text.replace('localStorage.setItem(', 'window.MCMap.safeLocalSet(')
 
     # Common low-value one-second age clocks become 10-second clocks. This is
     # intentionally limited to functions conventionally named clock/updateClock.
@@ -149,14 +167,16 @@ def check(path: Path, text: str) -> list[str]:
         block = m.group(0)
         if 'globalThis.scheduler?.yield' not in block or 'setTimeout(resolve, 0)' not in block:
             errs.append('shared yield is not background-safe')
-        if 'Caller-supplied AbortSignal owns timeout/retry.' not in block:
+        if 'Caller-supplied AbortSignal owns timeout/retry.' not in block or 'if (init?.signal)' not in block:
             errs.append('shared fetch can still nest timeout/retry ownership')
-        if 'function safeLocalSet(' not in block:
+        if 'function safeLocalSet(' not in block or 'window.localStorage.setItem(key, text)' not in block:
             errs.append('missing non-fatal bounded localStorage helper')
-    # No map should directly write localStorage after this pass. Reads are okay.
+        if 'window.MCMap.safeLocalSet(key, text)' in block:
+            errs.append('safeLocalSet recursively calls itself')
+    # No map-specific code should directly write localStorage after this pass.
     outside = RUNTIME_RE.sub('', text)
-    if 'localStorage.setItem(' in outside:
-        errs.append('direct localStorage.setItem remains')
+    if 'localStorage.setItem(' in outside or 'window.localStorage.setItem(' in outside:
+        errs.append('direct localStorage.setItem remains outside shared runtime')
     return errs
 
 
