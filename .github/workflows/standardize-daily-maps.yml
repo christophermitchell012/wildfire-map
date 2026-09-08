@@ -6,6 +6,7 @@ on:
     paths:
       - 'daily-maps/*.html'
       - 'scripts/standardize_daily_maps.py'
+      - 'scripts/apply_browser_first_standard.py'
       - 'scripts/optimize_gridwatch.py'
       - 'scripts/optimize_netwatch.py'
       - '.github/workflows/standardize-daily-maps.yml'
@@ -66,14 +67,19 @@ jobs:
               path.write_text(text, encoding='utf-8', newline='\n')
           PY
 
-      - name: Apply EvacWatch + GridWatch performance standard
+      - name: Apply shared map standard
         run: python scripts/standardize_daily_maps.py
+
+      - name: Apply browser-first performance safeguards
+        run: python scripts/apply_browser_first_standard.py
 
       - name: Pretty-print all map HTML
         run: npx --yes prettier@3.3.3 --write 'daily-maps/*.html'
 
-      - name: Validate standard before commit
-        run: python scripts/standardize_daily_maps.py --check
+      - name: Validate standards before commit
+        run: |
+          python scripts/standardize_daily_maps.py --check
+          python scripts/apply_browser_first_standard.py --check
 
       - name: Commit standardized maps
         run: |
@@ -84,5 +90,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add daily-maps/*.html
-          git commit -m 'Apply performance standard to daily maps [map-standard]'
+          git commit -m 'Apply browser-first performance standard [map-standard]'
           git push
