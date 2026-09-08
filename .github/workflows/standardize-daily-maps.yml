@@ -1,0 +1,47 @@
+name: Standardize Daily Maps
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'daily-maps/*.html'
+      - 'scripts/standardize_daily_maps.py'
+      - '.github/workflows/standardize-daily-maps.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  standardize:
+    if: ${{ !contains(github.event.head_commit.message, '[map-standard]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Apply EvacWatch v2 standard
+        run: python scripts/standardize_daily_maps.py || true
+
+      - name: Pretty-print all map HTML
+        run: npx --yes prettier@3.3.3 --write 'daily-maps/*.html'
+
+      - name: Commit standardized maps
+        run: |
+          if git diff --quiet -- daily-maps; then
+            echo 'No map changes needed.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add daily-maps/*.html
+          git commit -m 'Standardize daily maps [map-standard]'
+          git push
