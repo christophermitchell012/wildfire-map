@@ -7,6 +7,7 @@ on:
       - 'daily-maps/*.html'
       - 'scripts/standardize_daily_maps.py'
       - 'scripts/optimize_gridwatch.py'
+      - 'scripts/optimize_netwatch.py'
       - '.github/workflows/standardize-daily-maps.yml'
 
 permissions:
@@ -36,6 +37,15 @@ jobs:
             echo 'GridWatch already contains the performance rewrite.'
           else
             python scripts/optimize_gridwatch.py
+          fi
+
+      - name: Optimize NetWatch Map 11 when v2 is absent
+        shell: bash
+        run: |
+          if grep -q 'data-netwatch-performance="v2"' daily-maps/11-internet-outage-watch.html; then
+            echo 'NetWatch already contains the performance rewrite.'
+          else
+            python scripts/optimize_netwatch.py
           fi
 
       - name: Ensure required footer copyright
