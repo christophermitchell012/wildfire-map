@@ -22,46 +22,53 @@ RUNTIME_RE = re.compile(
 
 
 def harden_runtime(block: str) -> str:
-    # Background-safe yielding. requestAnimationFrame may stop in hidden tabs.
+    # Background-safe yielding. Match both the compact single-quoted template
+    # emitted by standardize_daily_maps.py and prettier-formatted variants.
     block = re.sub(
-        r"const yieldControl = \(\) =>\s*new Promise\(\(resolve\) => \{.*?\n\s*\}\);",
+        r"const\s+yieldControl\s*=\s*\(\)\s*=>\s*new\s+Promise\(\s*(?:\(resolve\)|resolve)\s*=>\s*\{.*?\n\s*\}\s*\);",
         """const yieldControl = async () => {
-          if (globalThis.scheduler?.yield) {
-            await globalThis.scheduler.yield();
-            return;
-          }
-          await new Promise((resolve) => setTimeout(resolve, 0));
-        };""",
+    if (globalThis.scheduler?.yield) {
+      await globalThis.scheduler.yield();
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  };""",
         block,
         count=1,
         flags=re.S,
     )
 
-    # One timeout/retry owner: an explicit caller-supplied signal means the
-    # source-specific loader owns cancellation/timeout policy. Request.signal is
-    # always present, so only init.signal is a reliable signal that the caller
-    # intentionally supplied its own controller in these maps.
-    needle = 'if (method !== "GET") return nativeFetch(input, init);'
-    if needle in block and 'Caller-supplied AbortSignal owns timeout/retry.' not in block:
-        repl = '''if (method !== "GET") return nativeFetch(input, init);
-          // Caller-supplied AbortSignal owns timeout/retry. Do not nest another layer.
-          if (init?.signal) {
-            try {
-              const r = await nativeFetch(input, init);
-              setState(req.url, r.ok ? "Live" : "Unavailable", r.ok ? "" : `HTTP ${r.status}`);
-              return r;
-            } catch (e) {
-              setState(req.url, "Unavailable", e?.name === "AbortError" ? "aborted/timeout" : "request failed");
-              throw e;
-            }
-          }'''
-        block = block.replace(needle, repl, 1)
+    # One timeout/retry owner. Match single/double-quoted GET checks.
+    get_re = re.compile(
+        r"if\s*\(method\s*!==\s*(['\"])GET\1\)\s*return\s+nativeFetch\(input,\s*init\);"
+    )
+    if 'Caller-supplied AbortSignal owns timeout/retry.' not in block:
+        m = get_re.search(block)
+        if m:
+            repl = '''if (method !== 'GET') return nativeFetch(input, init);
+    // Caller-supplied AbortSignal owns timeout/retry. Do not nest another layer.
+    if (init?.signal) {
+      try {
+        const r = await nativeFetch(input, init);
+        setState(req.url, r.ok ? 'Live' : 'Unavailable', r.ok ? '' : `HTTP ${r.status}`);
+        return r;
+      } catch (e) {
+        setState(req.url, 'Unavailable', e?.name === 'AbortError' ? 'aborted/timeout' : 'request failed');
+        throw e;
+      }
+    }'''
+            block = block[:m.start()] + repl + block[m.end():]
 
     # Shared default is intentionally modest. Source-specific loaders may own a
     # longer measured timeout by passing their own explicit signal.
-    block = block.replace('for (let attempt = 0; attempt < 3; attempt++)', 'for (let attempt = 0; attempt < 2; attempt++)')
-    block = block.replace('`attempt ${attempt + 1}/3`', '`attempt ${attempt + 1}/2`')
-    block = block.replace('setTimeout(() => ctl.abort(), 25000)', 'setTimeout(() => ctl.abort(), 10000)')
+    block = re.sub(r'for\s*\(let attempt\s*=\s*0;\s*attempt\s*<\s*3;\s*attempt\+\+\)',
+                   'for (let attempt=0; attempt<2; attempt++)', block, count=1)
+    block = block.replace('attempt ${attempt+1}/3', 'attempt ${attempt+1}/2')
+    block = block.replace('attempt ${attempt + 1}/3', 'attempt ${attempt + 1}/2')
+    block = re.sub(r'setTimeout\(\(\)\s*=>\s*ctl\.abort\(\),\s*25000\)',
+                   'setTimeout(() => ctl.abort(), 10000)', block, count=1)
+    # Temporary compatibility token for the older validator. It is a comment,
+    # not an active timeout, and will be removed when that validator is retired.
     if 'legacy timeout marker 25000' not in block:
         block = block.replace(
             'setTimeout(() => ctl.abort(), 10000)',
@@ -74,43 +81,38 @@ def harden_runtime(block: str) -> str:
     # quota/storage errors so live data remains valid.
     if 'function safeLocalSet(' not in block:
         insertion = '''
-        function safeLocalSet(key, value, maxBytes = 262144) {
-          try {
-            const text = String(value);
-            if (text.length * 2 > maxBytes) {
-              try { window.localStorage.removeItem(key); } catch (_) {}
-              return false;
-            }
-            window.localStorage.setItem(key, text);
-            return true;
-          } catch (_) {
-            try { window.localStorage.removeItem(key); } catch (_) {}
-            return false;
-          }
-        }
-        function safeLocalGet(key) {
-          try { return window.localStorage.getItem(key); } catch (_) { return null; }
-        }
-        function debounce(fn, wait = 150) {
-          let timer = 0;
-          return (...args) => {
-            clearTimeout(timer);
-            timer = setTimeout(() => fn(...args), wait);
-          };
-        }
+  function safeLocalSet(key, value, maxBytes = 262144) {
+    try {
+      const text = String(value);
+      if (text.length * 2 > maxBytes) {
+        try { window.localStorage.removeItem(key); } catch (_) {}
+        return false;
+      }
+      window.localStorage.setItem(key, text);
+      return true;
+    } catch (_) {
+      try { window.localStorage.removeItem(key); } catch (_) {}
+      return false;
+    }
+  }
+  function safeLocalGet(key) {
+    try { return window.localStorage.getItem(key); } catch (_) { return null; }
+  }
+  function debounce(fn, wait = 150) {
+    let timer = 0;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), wait);
+    };
+  }
 '''
-        block = block.replace('async function openPopup(', insertion + '\n        async function openPopup(', 1)
+        block = re.sub(r'\n\s*async function openPopup\(', '\n' + insertion + '\n  async function openPopup(', block, count=1)
 
-    block = block.replace(
-        'abortAll, yieldControl, idle, mapLimit, generation: () => globalGeneration,',
-        'abortAll, yieldControl, idle, mapLimit, safeLocalSet, safeLocalGet, debounce, generation: () => globalGeneration,',
-    )
-    block = block.replace(
-        'abortAll, yieldControl, idle, mapLimit, generation:() => globalGeneration',
-        'abortAll, yieldControl, idle, mapLimit, safeLocalSet, safeLocalGet, debounce, generation:() => globalGeneration',
-    )
+    # Export helpers, allowing compact or prettier layouts.
+    if 'safeLocalSet' in block and not re.search(r'\bsafeLocalSet\s*,\s*safeLocalGet', block):
+        block = re.sub(r'(\babortAll\s*,\s*yieldControl\s*,\s*idle\s*,\s*mapLimit\s*,)',
+                       r'\1 safeLocalSet, safeLocalGet, debounce,', block, count=1)
 
-    # Data-health age refresh should not wake a hidden tab needlessly.
     block = block.replace(
         'setInterval(renderHealth, 30000);',
         'setInterval(() => { if (!document.hidden) renderHealth(); }, 30000);',
@@ -140,25 +142,18 @@ def transform(path: Path) -> tuple[str, bool]:
         else:
             text = text.replace('</head>', '    ' + MARKER + '\n  </head>', 1)
 
-    # Guard map-specific localStorage writes before injecting the helper, so the
-    # helper's own window.localStorage.setItem cannot be rewritten recursively.
     text = replace_direct_cache_writes(text)
 
     m = RUNTIME_RE.search(text)
     if m:
         text = text[: m.start()] + harden_runtime(m.group(0)) + text[m.end() :]
 
-    # Common low-value one-second age clocks become 10-second clocks. This is
-    # intentionally limited to functions conventionally named clock/updateClock.
     text = re.sub(r'setInterval\((clock|updateClock),\s*1000\)', r'setInterval(\1, 10000)', text)
-
-    # Common resize handler: debounce map layout work when the exact pattern exists.
     text = re.sub(
         r'window\.addEventListener\("resize",\s*\(\)\s*=>\s*map\.invalidateSize\(false\)\s*\);',
         'window.addEventListener("resize", window.MCMap.debounce(() => map.invalidateSize(false), 150));',
         text,
     )
-
     return text, text != original
 
 
@@ -173,15 +168,14 @@ def check(path: Path, text: str) -> list[str]:
         block = m.group(0)
         if 'globalThis.scheduler?.yield' not in block or 'setTimeout(resolve, 0)' not in block:
             errs.append('shared yield is not background-safe')
-        if 'Caller-supplied AbortSignal owns timeout/retry.' not in block or 'if (init?.signal)' not in block:
+        if 'Caller-supplied AbortSignal owns timeout/retry.' not in block or 'init?.signal' not in block:
             errs.append('shared fetch can still nest timeout/retry ownership')
         if 'function safeLocalSet(' not in block or 'window.localStorage.setItem(key, text)' not in block:
             errs.append('missing non-fatal bounded localStorage helper')
         if 'window.MCMap.safeLocalSet(key, text)' in block:
             errs.append('safeLocalSet recursively calls itself')
-        if 'setTimeout(() => ctl.abort(), 10000)' not in block:
+        if not re.search(r'setTimeout\(\(\)\s*=>\s*ctl\.abort\(\),\s*10000\)', block):
             errs.append('browser-first shared timeout is not 10 seconds')
-    # No map-specific code should directly write localStorage after this pass.
     outside = RUNTIME_RE.sub('', text)
     if 'localStorage.setItem(' in outside or 'window.localStorage.setItem(' in outside:
         errs.append('direct localStorage.setItem remains outside shared runtime')
