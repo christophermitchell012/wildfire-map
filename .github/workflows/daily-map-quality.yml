@@ -39,13 +39,14 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
-          import html, pathlib, re, subprocess, tempfile, sys
+          import pathlib, re, subprocess, tempfile, sys
           bad = []
           for path in sorted(pathlib.Path('daily-maps').glob('[0-9][0-9]-*.html')):
               text = path.read_text(encoding='utf-8')
+              # Script elements are HTML raw-text elements. Character references such
+              # as &quot; must NOT be HTML-unescaped before JS parsing.
               scripts = re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', text, flags=re.I|re.S)
               for i, body in enumerate(scripts, 1):
-                  body = html.unescape(body)
                   with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f:
                       f.write(body)
                       tmp = f.name
