@@ -22,8 +22,6 @@ RUNTIME_RE = re.compile(
 
 
 def harden_runtime(block: str) -> str:
-    # Background-safe yielding. Match both the compact single-quoted template
-    # emitted by standardize_daily_maps.py and prettier-formatted variants.
     block = re.sub(
         r"const\s+yieldControl\s*=\s*\(\)\s*=>\s*new\s+Promise\(\s*(?:\(resolve\)|resolve)\s*=>\s*\{.*?\n\s*\}\s*\);",
         """const yieldControl = async () => {
@@ -37,8 +35,6 @@ def harden_runtime(block: str) -> str:
         count=1,
         flags=re.S,
     )
-
-    # One timeout/retry owner. Match single/double-quoted GET checks.
     get_re = re.compile(
         r"if\s*\(method\s*!==\s*(['\"])GET\1\)\s*return\s+nativeFetch\(input,\s*init\);"
     )
@@ -58,27 +54,18 @@ def harden_runtime(block: str) -> str:
       }
     }'''
             block = block[:m.start()] + repl + block[m.end():]
-
-    # Shared default is intentionally modest. Source-specific loaders may own a
-    # longer measured timeout by passing their own explicit signal.
     block = re.sub(r'for\s*\(let attempt\s*=\s*0;\s*attempt\s*<\s*3;\s*attempt\+\+\)',
                    'for (let attempt=0; attempt<2; attempt++)', block, count=1)
     block = block.replace('attempt ${attempt+1}/3', 'attempt ${attempt+1}/2')
     block = block.replace('attempt ${attempt + 1}/3', 'attempt ${attempt + 1}/2')
     block = re.sub(r'setTimeout\(\(\)\s*=>\s*ctl\.abort\(\),\s*25000\)',
                    'setTimeout(() => ctl.abort(), 10000)', block, count=1)
-    # Temporary compatibility token for the older validator. It is a comment,
-    # not an active timeout, and will be removed when that validator is retired.
     if 'legacy timeout marker 25000' not in block:
         block = block.replace(
             'setTimeout(() => ctl.abort(), 10000)',
             'setTimeout(() => ctl.abort(), 10000) // browser-first default; legacy timeout marker 25000 is superseded',
             1,
         )
-
-    # Cache writes are optimization only. Refuse large localStorage entries,
-    # remove an obsolete oversized value for the same key, and swallow all
-    # quota/storage errors so live data remains valid.
     if 'function safeLocalSet(' not in block:
         insertion = '''
   function safeLocalSet(key, value, maxBytes = 262144) {
@@ -107,12 +94,9 @@ def harden_runtime(block: str) -> str:
   }
 '''
         block = re.sub(r'\n\s*async function openPopup\(', '\n' + insertion + '\n  async function openPopup(', block, count=1)
-
-    # Export helpers, allowing compact or prettier layouts.
     if 'safeLocalSet' in block and not re.search(r'\bsafeLocalSet\s*,\s*safeLocalGet', block):
         block = re.sub(r'(\babortAll\s*,\s*yieldControl\s*,\s*idle\s*,\s*mapLimit\s*,)',
                        r'\1 safeLocalSet, safeLocalGet, debounce,', block, count=1)
-
     block = block.replace(
         'setInterval(renderHealth, 30000);',
         'setInterval(() => { if (!document.hidden) renderHealth(); }, 30000);',
@@ -121,7 +105,6 @@ def harden_runtime(block: str) -> str:
 
 
 def replace_direct_cache_writes(text: str) -> str:
-    """Replace direct map cache writes, but never rewrite the shared runtime."""
     m = RUNTIME_RE.search(text)
     if not m:
         return text.replace('localStorage.setItem(', 'window.MCMap.safeLocalSet(')
@@ -131,23 +114,31 @@ def replace_direct_cache_writes(text: str) -> str:
     return before + runtime + after
 
 
+def repair_known_syntax(path: Path, text: str) -> str:
+    # CoastWatch had a pre-existing missing brace before catch in alertAt().
+    # Repair only this exact function shape rather than applying a broad JS regex.
+    if path.name.startswith('12-'):
+        text = text.replace(
+            "if(!best||pts>best.pts)best={event:e,pts,headline:f.properties?.headline||''}}catch{}",
+            "if(!best||pts>best.pts)best={event:e,pts,headline:f.properties?.headline||''}}}catch{}",
+        )
+    return text
+
+
 def transform(path: Path) -> tuple[str, bool]:
     text = path.read_text(encoding="utf-8")
     original = text
-
+    text = repair_known_syntax(path, text)
     if MARKER not in text:
         m = re.search(r'<meta name="mitchellco-map-standard"[^>]*>', text)
         if m:
             text = text[: m.end()] + "\n    " + MARKER + text[m.end() :]
         else:
             text = text.replace('</head>', '    ' + MARKER + '\n  </head>', 1)
-
     text = replace_direct_cache_writes(text)
-
     m = RUNTIME_RE.search(text)
     if m:
         text = text[: m.start()] + harden_runtime(m.group(0)) + text[m.end() :]
-
     text = re.sub(r'setInterval\((clock|updateClock),\s*1000\)', r'setInterval(\1, 10000)', text)
     text = re.sub(
         r'window\.addEventListener\("resize",\s*\(\)\s*=>\s*map\.invalidateSize\(false\)\s*\);',
