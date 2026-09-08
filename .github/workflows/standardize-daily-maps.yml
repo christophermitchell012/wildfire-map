@@ -29,8 +29,14 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Optimize GridWatch Map 09
-        run: python scripts/optimize_gridwatch.py
+      - name: Optimize GridWatch Map 09 when legacy version is present
+        shell: bash
+        run: |
+          if grep -q 'countyIndex: \[\]' daily-maps/09-power-grid-stress-extreme-weather.html; then
+            echo 'GridWatch already contains the performance rewrite.'
+          else
+            python scripts/optimize_gridwatch.py
+          fi
 
       - name: Ensure required footer copyright
         run: |
@@ -50,8 +56,8 @@ jobs:
               path.write_text(text, encoding='utf-8', newline='\n')
           PY
 
-      - name: Apply EvacWatch v2 standard
-        run: python scripts/standardize_daily_maps.py || true
+      - name: Apply EvacWatch + GridWatch performance standard
+        run: python scripts/standardize_daily_maps.py
 
       - name: Pretty-print all map HTML
         run: npx --yes prettier@3.3.3 --write 'daily-maps/*.html'
@@ -68,5 +74,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add daily-maps/*.html
-          git commit -m 'Optimize GridWatch performance [map-standard]'
+          git commit -m 'Apply performance standard to daily maps [map-standard]'
           git push
