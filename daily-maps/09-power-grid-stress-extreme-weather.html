@@ -605,10 +605,13 @@
         <details class="card small">
           <summary><b>Loading & reliability</b></summary>
           <div style="margin-top: 7px">
-            Live requests use timeouts, bounded spatial queries, browser
-            caching, overlap protection and retry/backoff. Scheduled NWS refresh
-            pauses while the page is hidden or offline. Optional transmission
-            geometry loads only when enabled.
+            Heavy ArcGIS polygon layers load as four bounded chunks with at most
+            three requests in flight. Independent sources load in parallel,
+            stale requests are aborted on region changes, and scoring yields to
+            the browser every few control areas. API timeouts are 25 seconds
+            with retry/backoff. Scheduled NWS refresh pauses while the page is
+            hidden or offline. Optional transmission geometry loads only when
+            enabled.
           </div>
         </details>
         <details class="card sources">
@@ -811,13 +814,18 @@
         controls: EMPTY,
         counties: EMPTY,
         alerts: EMPTY,
+        countyIndex: [],
+        alertIndex: [],
         last: {},
-        busy: new Set(),
+        inflight: new Map(),
+        controllers: new Set(),
         rank: new Map(),
         generation: 0,
         recomputeToken: 0,
+        recomputeTimer: 0,
         lineRegion: -1,
         forecastCache: new Map(),
+        ready: { controls: false, counties: false, alerts: false },
       };
       const CONTROL =
           "https://services5.arcgis.com/HDRa0B57OVrv2E1q/ArcGIS/rest/services/Control_Areas/FeatureServer/0/query",
@@ -846,8 +854,11 @@
           spatialReference: { wkid: 4326 },
         });
       }
-      function cacheKey(key) {
-        return "gridwatch:v1:" + region()[0] + ":" + key;
+      function regionKey() {
+        return `${$("region").value || 0}:${region()[0]}`;
+      }
+      function cacheKey(key, ns = regionKey()) {
+        return "gridwatch:v2:" + ns + ":" + key;
       }
       function health(id, state, detail = "") {
         const e = $(id);
@@ -865,66 +876,95 @@
       async function fetchJSON(
         url,
         key,
-        { timeout = 12000, retries = 2, cache = true, ttl = 0 } = {},
+        {
+          timeout = 25000,
+          retries = 2,
+          cache = true,
+          ttl = 0,
+          gen = S.generation,
+        } = {},
       ) {
-        if (S.busy.has(key)) return null;
-        S.busy.add(key);
-        try {
-          if (cache && ttl)
+        const ns = regionKey();
+        const requestKey = `${ns}|${key}|${url}`;
+        if (S.inflight.has(requestKey)) return S.inflight.get(requestKey);
+        const task = (async () => {
+          if (cache && ttl) {
             try {
               const c = JSON.parse(
-                localStorage.getItem(cacheKey(key)) || "null",
+                localStorage.getItem(cacheKey(key, ns)) || "null",
               );
               if (c?.data && Date.now() - c.time < ttl) {
                 S.last[key] = { time: c.time, mode: "Cached" };
                 return c.data;
               }
             } catch {}
+          }
+          let lastError;
           for (let i = 0; i <= retries; i++) {
-            const ctl = new AbortController(),
-              timer = setTimeout(() => ctl.abort(), timeout);
+            if (gen !== S.generation)
+              throw new DOMException("stale region", "AbortError");
+            const ctl = new AbortController();
+            S.controllers.add(ctl);
+            const timer = setTimeout(() => ctl.abort(), timeout);
             try {
-              if (i) await sleep(700 * Math.pow(2, i - 1));
+              if (i) await sleep(700 * 2 ** (i - 1));
               const r = await fetch(url, {
                 headers: { Accept: "application/geo+json, application/json" },
                 signal: ctl.signal,
               });
-              clearTimeout(timer);
               if (!r.ok) throw new Error("HTTP " + r.status);
               const j = await r.json();
               if (j?.error) throw new Error(j.error.message || "service error");
+              if (gen !== S.generation)
+                throw new DOMException("stale region", "AbortError");
               const now = Date.now();
               S.last[key] = { time: now, mode: "Live" };
-              if (cache)
+              if (cache) {
                 try {
                   localStorage.setItem(
-                    cacheKey(key),
+                    cacheKey(key, ns),
                     JSON.stringify({ time: now, data: j }),
                   );
                 } catch {}
+              }
               return j;
             } catch (e) {
+              lastError = e;
+              if (e?.name === "AbortError" || gen !== S.generation) throw e;
+              if (i >= retries) break;
+            } finally {
               clearTimeout(timer);
-              if (i < retries) continue;
-              console.warn(key, e);
+              S.controllers.delete(ctl);
             }
           }
-          if (cache)
+          if (cache) {
             try {
               const c = JSON.parse(
-                localStorage.getItem(cacheKey(key)) || "null",
+                localStorage.getItem(cacheKey(key, ns)) || "null",
               );
               if (c?.data) {
                 S.last[key] = { time: c.time, mode: "Cached" };
                 return c.data;
               }
             } catch {}
-          throw new Error("live and cached data unavailable");
+          }
+          throw lastError || new Error("live and cached data unavailable");
+        })();
+        S.inflight.set(requestKey, task);
+        try {
+          return await task;
         } finally {
-          S.busy.delete(key);
+          S.inflight.delete(requestKey);
         }
       }
-      function qurl(base, fields, extra = {}) {
+      function qurl(base, fields, extra = {}, bounds = box()) {
+        const geometry = JSON.stringify({
+          xmin: bounds.w,
+          ymin: bounds.s,
+          xmax: bounds.e,
+          ymax: bounds.n,
+          spatialReference: { wkid: 4326 },
+        });
         return (
           base +
           "?" +
@@ -933,7 +973,7 @@
             outFields: fields,
             returnGeometry: "true",
             outSR: "4326",
-            geometry: env(),
+            geometry,
             geometryType: "esriGeometryEnvelope",
             spatialRel: "esriSpatialRelIntersects",
             geometryPrecision: "4",
@@ -942,25 +982,99 @@
           })
         );
       }
-      async function loadControls(gen = S.generation) {
-        health("gridStatus", "Loading");
-        try {
+      function tiles2x2() {
+        const b = box(),
+          midLat = (b.s + b.n) / 2,
+          midLon = (b.w + b.e) / 2;
+        return [
+          { s: b.s, w: b.w, n: midLat, e: midLon },
+          { s: b.s, w: midLon, n: midLat, e: b.e },
+          { s: midLat, w: b.w, n: b.n, e: midLon },
+          { s: midLat, w: midLon, n: b.n, e: b.e },
+        ];
+      }
+      async function mapLimit(items, limit, fn) {
+        const out = new Array(items.length);
+        let next = 0;
+        async function worker() {
+          while (next < items.length) {
+            const i = next++;
+            out[i] = await fn(items[i], i);
+            await sleep0();
+          }
+        }
+        await Promise.all(
+          Array.from({ length: Math.min(limit, items.length) }, worker),
+        );
+        return out;
+      }
+      function mergeFeatures(parts, idField) {
+        const seen = new Set(),
+          features = [];
+        for (const p of parts)
+          for (const f of p?.features || []) {
+            const id = String(
+              f.properties?.[idField] ??
+                f.properties?.OBJECTID ??
+                JSON.stringify(f.geometry).slice(0, 120),
+            );
+            if (!seen.has(id)) {
+              seen.add(id);
+              features.push(f);
+            }
+          }
+        return { type: "FeatureCollection", features };
+      }
+      async function chunkedArcGIS(base, fields, key, extra, idField, gen) {
+        const tiles = tiles2x2();
+        health(
+          key === "controls" ? "gridStatus" : "countyStatus",
+          "Loading",
+          `0/${tiles.length} chunks`,
+        );
+        let done = 0;
+        const parts = await mapLimit(tiles, 3, async (tile, i) => {
           const j = await fetchJSON(
-            qurl(
-              CONTROL,
-              "ID,NAME,STATE,YEAR,AVAIL_CAP,TOTAL_CAP,PEAK_LOAD,MIN_LOAD,SOURCEDATE",
-              { maxAllowableOffset: "0.015" },
-            ),
-            "controls",
-            { retries: 2 },
+            qurl(base, fields, extra, tile),
+            `${key}-chunk-${i}`,
+            {
+              timeout: 25000,
+              retries: 1,
+              cache: true,
+              ttl: 86400000,
+              gen,
+            },
           );
-          if (gen !== S.generation || !j) return;
+          done++;
+          if (gen === S.generation)
+            health(
+              key === "controls" ? "gridStatus" : "countyStatus",
+              "Loading",
+              `${done}/${tiles.length} chunks`,
+            );
+          return j;
+        });
+        return mergeFeatures(parts, idField);
+      }
+      async function loadControls(gen = S.generation) {
+        health("gridStatus", "Loading", "chunked");
+        try {
+          const j = await chunkedArcGIS(
+            CONTROL,
+            "ID,NAME,STATE,YEAR,AVAIL_CAP,TOTAL_CAP,PEAK_LOAD,MIN_LOAD,SOURCEDATE",
+            "controls",
+            { maxAllowableOffset: "0.02" },
+            "ID",
+            gen,
+          );
+          if (gen !== S.generation) return;
           S.controls = j;
+          S.ready.controls = true;
           controlLayer.clearLayers().addData(j);
           health(
             "gridStatus",
-            S.last.controls.mode,
-            `${j.features?.length || 0} areas · legacy baseline`,
+            "Live",
+            `${j.features.length} areas · 4 chunks · legacy baseline`,
           );
           scheduleRecompute();
         } catch (e) {
@@ -968,21 +1082,39 @@
         }
       }
       async function loadCounties(gen = S.generation) {
-        health("countyStatus", "Loading");
+        health("countyStatus", "Loading", "chunked");
         try {
-          const j = await fetchJSON(
-            qurl(CDC, "STCNTY,COUNTY,ST_ABBR,E_TOTPOP,RPL_THEMES", {
-              maxAllowableOffset: "0.005",
-            }),
+          const j = await chunkedArcGIS(
+            CDC,
+            "STCNTY,COUNTY,ST_ABBR,E_TOTPOP,RPL_THEMES",
             "counties",
-            { retries: 2 },
+            { maxAllowableOffset: "0.012" },
+            "STCNTY",
+            gen,
           );
-          if (gen !== S.generation || !j) return;
+          if (gen !== S.generation) return;
           S.counties = j;
+          S.countyIndex = [];
+          let i = 0;
+          for (const c of j.features) {
+            try {
+              const pt = turf.pointOnFeature(c),
+                p = c.properties || {},
+                bb = turf.bbox(c);
+              S.countyIndex.push({
+                pt,
+                bb,
+                pop: Math.max(0, num(p.E_TOTPOP) || 0),
+                svi: Math.max(0, Math.min(1, num(p.RPL_THEMES) || 0)),
+              });
+            } catch {}
+            if (++i % 80 === 0) await sleep0();
+          }
+          S.ready.counties = true;
           health(
             "countyStatus",
-            S.last.counties.mode,
-            `${j.features?.length || 0} counties · 2022`,
+            "Live",
+            `${j.features.length} counties · indexed once · 2022`,
           );
           scheduleRecompute();
         } catch (e) {
@@ -1031,73 +1163,75 @@
       async function resolveAlertFeature(alert, gen) {
         const p = alert.properties || {};
         if (alert.geometry && inBoxFeature(alert)) return [alert];
-        const urls = (p.affectedZones || []).filter(zoneInRegion);
+        const urls = [...new Set((p.affectedZones || []).filter(zoneInRegion))];
         if (!urls.length) return [];
-        const out = [];
-        for (let i = 0; i < urls.length; i += 6) {
-          if (gen !== S.generation) return [];
-          const got = await Promise.all(
-            urls.slice(i, i + 6).map(async (u) => {
-              const id = zoneId(u);
-              try {
-                const z = await fetchJSON(u, `zone-${id}`, {
-                  timeout: 10000,
-                  retries: 1,
-                  cache: true,
-                  ttl: 86400000,
-                });
-                if (!z?.geometry) return null;
-                const f = {
-                  type: "Feature",
-                  geometry: z.geometry,
-                  properties: {
-                    ...p,
-                    zoneId: id,
-                    zoneName: z.properties?.name || id,
-                  },
-                };
-                return inBoxFeature(f) ? f : null;
-              } catch {
-                return null;
-              }
-            }),
-          );
-          out.push(...got.filter(Boolean));
-          await sleep0();
-        }
-        return out;
+        const got = await mapLimit(urls, 4, async (u) => {
+          if (gen !== S.generation) return null;
+          const id = zoneId(u);
+          try {
+            const z = await fetchJSON(u, `zone-${id}`, {
+              timeout: 20000,
+              retries: 1,
+              cache: true,
+              ttl: 86400000,
+              gen,
+            });
+            if (!z?.geometry) return null;
+            const f = {
+              type: "Feature",
+              geometry: z.geometry,
+              properties: {
+                ...p,
+                zoneId: id,
+                zoneName: z.properties?.name || id,
+              },
+            };
+            return inBoxFeature(f) ? f : null;
+          } catch {
+            return null;
+          }
+        });
+        return got.filter(Boolean);
       }
       async function loadAlerts(gen = S.generation) {
         health("alertStatus", "Loading");
         try {
           const j = await fetchJSON(ALERTS, "alerts", {
-            timeout: 10000,
-            retries: 2,
+            timeout: 25000,
+            retries: 1,
             cache: true,
             ttl: 120000,
+            gen,
           });
           if (gen !== S.generation || !j) return;
-          const cand = (j.features || []).filter(
-            (f) => WX_WEIGHTS[f.properties?.event],
-          );
-          const local = cand.filter((f) =>
-            f.geometry
-              ? inBoxFeature(f)
-              : (f.properties?.affectedZones || []).some(zoneInRegion),
+          const local = (j.features || []).filter(
+            (f) =>
+              WX_WEIGHTS[f.properties?.event] &&
+              (f.geometry
+                ? inBoxFeature(f)
+                : (f.properties?.affectedZones || []).some(zoneInRegion)),
           );
           health(
             "alertStatus",
             "Loading",
             `${local.length} products · resolving zones`,
           );
-          const resolved = [];
-          for (let i = 0; i < local.length; i++) {
-            if (gen !== S.generation) return;
-            resolved.push(...(await resolveAlertFeature(local[i], gen)));
-            if (i % 4 === 3) await sleep0();
-          }
+          const parts = await mapLimit(local, 3, (a) =>
+            resolveAlertFeature(a, gen),
+          );
           if (gen !== S.generation) return;
+          const resolved = parts.flat();
           S.alerts = { type: "FeatureCollection", features: resolved };
+          S.alertIndex = resolved
+            .map((f) => {
+              try {
+                return { f, bb: turf.bbox(f) };
+              } catch {
+                return null;
+              }
+            })
+            .filter(Boolean);
+          S.ready.alerts = true;
           alertLayer.clearLayers().addData(S.alerts);
           health(
             "alertStatus",
@@ -1179,14 +1313,17 @@
           if (gen === S.generation) health("lineStatus", "Unavailable");
         }
       }
-      function weatherForArea(area) {
+      function bboxIntersects(a, b) {
+        return !(a[2] < b[0] || a[0] > b[2] || a[3] < b[1] || a[1] > b[3]);
+      }
+      function weatherForArea(area, areaBB) {
         let best = 0,
           label = "No mapped extreme-weather alert at area";
-        for (const a of S.alerts.features || []) {
-          if (!a.geometry) continue;
+        for (const x of S.alertIndex) {
+          if (!bboxIntersects(areaBB, x.bb)) continue;
           try {
-            if (turf.booleanIntersects(area, a)) {
-              const ev = a.properties?.event || "",
+            if (turf.booleanIntersects(area, x.f)) {
+              const ev = x.f.properties?.event || "",
                 w = WX_WEIGHTS[ev] || 0;
               if (w > best) {
                 best = w;
@@ -1210,26 +1347,18 @@
         const pct = Math.min(100, (100 * v) / max);
         return `${label}: <b>${v.toFixed(0)}/${max}</b><div class="bar"><i style="width:${pct}%"></i></div>`;
       }
-      function countiesForArea(area) {
+      function countiesForArea(area, areaBB) {
         let pop = 0,
           weighted = 0;
-        for (const c of S.counties.features || []) {
-          let pt;
+        for (const c of S.countyIndex) {
+          if (!bboxIntersects(areaBB, c.bb)) continue;
           try {
-            pt = turf.pointOnFeature(c);
+            if (!turf.booleanPointInPolygon(c.pt, area)) continue;
           } catch {
             continue;
           }
-          try {
-            if (!turf.booleanPointInPolygon(pt, area)) continue;
-          } catch {
-            continue;
-          }
-          const p = c.properties || {},
-            n = Math.max(0, num(p.E_TOTPOP) || 0),
-            s = Math.max(0, Math.min(1, num(p.RPL_THEMES) || 0));
-          pop += n;
-          weighted += n * s;
+          pop += c.pop;
+          weighted += c.pop * c.svi;
         }
         return { pop, svi: pop ? weighted / pop : 0 };
       }
@@ -1237,13 +1366,25 @@
         return `<b>${esc(rec.name)}</b><br><b>Derived grid-weather stress: ${rec.score.toFixed(0)}/100</b><br><span class="small">Non-official screening index</span><br><br>${bar("Weather hazard", rec.weather, 40)}${bar("Historical margin pressure", rec.marginScore, 35)}${bar("Population exposure", rec.exposure, 15)}${bar("Social vulnerability", rec.vuln, 10)}<span class="pill">${esc(rec.wxLabel)}</span><br><br>Available capacity: ${rec.avail == null ? "n/a" : rec.avail.toLocaleString() + " MW"}<br>Peak load: ${rec.peak == null ? "n/a" : rec.peak.toLocaleString() + " MW"}<br>Historical margin: ${rec.margin == null ? "n/a" : (100 * rec.margin).toFixed(1) + "%"}<br>Baseline year: ${esc(rec.year || "n/a")}<br>Assigned population: ${Math.round(rec.pop).toLocaleString()}<br>Population-weighted SVI: ${rec.svi.toFixed(2)}<div id="forecast-${esc(rec.key)}" class="small" style="margin-top:8px">Loading 48-hour temperature forecast…</div>`;
       }
       async function recompute(token) {
-        if (token !== S.recomputeToken || !S.controls.features?.length) return;
+        if (
+          token !== S.recomputeToken ||
+          !S.ready.controls ||
+          !S.ready.counties ||
+          !S.controls.features?.length
+        )
+          return;
         stressLayer.clearLayers();
         S.rank.clear();
         const rows = [];
         let i = 0;
         for (const f of S.controls.features) {
           if (token !== S.recomputeToken) return;
+          let areaBB;
+          try {
+            areaBB = turf.bbox(f);
+          } catch {
+            continue;
+          }
           const p = f.properties || {},
             key = String(p.ID || p.OBJECTID_1 || i),
             name = p.NAME || `Control area ${key}`,
@@ -1254,8 +1395,8 @@
                 ? (avail - peak) / peak
                 : null,
             marginScore = marginPts(margin),
-            wx = weatherForArea(f),
-            exp = countiesForArea(f),
+            wx = weatherForArea(f, areaBB),
+            exp = countiesForArea(f, areaBB),
             exposure = Math.min(15, exp.pop ? 2.5 * Math.log10(exp.pop) : 0),
             vuln = 10 * exp.svi,
             score = Math.min(100, wx.points + marginScore + exposure + vuln);
@@ -1308,14 +1449,21 @@
           }
           S.rank.set(key, rec);
           rows.push(rec);
-          if (++i % 12 === 0) await sleep0();
+          if (++i % 3 === 0)
+            await new Promise((resolve) => requestAnimationFrame(resolve));
         }
         rows.sort((a, b) => b.score - a.score);
         render(rows.slice(0, 15));
       }
       function scheduleRecompute() {
+        clearTimeout(S.recomputeTimer);
         const t = ++S.recomputeToken;
-        setTimeout(() => recompute(t), 80);
+        S.recomputeTimer = setTimeout(() => {
+          const run = () => recompute(t);
+          if ("requestIdleCallback" in window)
+            requestIdleCallback(run, { timeout: 1200 });
+          else setTimeout(run, 0);
+        }, 260);
       }
       function render(rows) {
         const b = $("rankBody");
@@ -1403,9 +1551,16 @@
       function clearRegion() {
         S.generation++;
         S.recomputeToken++;
+        clearTimeout(S.recomputeTimer);
+        for (const ctl of S.controllers) ctl.abort();
+        S.controllers.clear();
+        S.inflight.clear();
         S.controls = EMPTY;
         S.counties = EMPTY;
         S.alerts = EMPTY;
+        S.countyIndex = [];
+        S.alertIndex = [];
+        S.ready = { controls: false, counties: false, alerts: false };
         S.rank.clear();
         S.lineRegion = -1;
         map.closePopup();
@@ -1414,10 +1569,10 @@
         stressLayer.clearLayers();
         lineLayer.clearLayers();
         $("rankBody").innerHTML =
-          '<tr><td colspan="4" class="small">Loading selected region…</td></tr>';
-        health("alertStatus", "Loading");
-        health("gridStatus", "Loading");
-        health("countyStatus", "Loading");
+          '<tr><td colspan="4" class="small">Loading selected region in parallel…</td></tr>';
+        health("alertStatus", "Loading", "queued");
+        health("gridStatus", "Loading", "queued");
+        health("countyStatus", "Loading", "queued");
         health("lineStatus", $("tLines").checked ? "Loading" : "Off");
       }
       function loadRegion() {
@@ -1431,10 +1586,15 @@
           ],
           { padding: [8, 8] },
         );
-        loadControls(g);
-        setTimeout(() => loadCounties(g), 180);
-        setTimeout(() => loadAlerts(g), 380);
-        if ($("tLines").checked) setTimeout(() => loadLines(true), 650);
+        // These calls are intentionally not awaited. Each has independent progress,
+        // cancellation and caching, so the map remains interactive while data arrives.
+        void loadControls(g);
+        void loadCounties(g);
+        void loadAlerts(g);
+        if ($("tLines").checked)
+          setTimeout(() => {
+            if (g === S.generation) void loadLines(true);
+          }, 350);
       }
       function toggle(id, l) {
         $(id).onchange = (e) =>
