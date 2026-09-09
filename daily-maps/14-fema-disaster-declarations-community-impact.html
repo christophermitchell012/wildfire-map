@@ -2,10 +2,15 @@
 <html lang="en">
   <head>
     <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8SVEH8WD1R"></script>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-8SVEH8WD1R"
+    ></script>
     <script>
       window.dataLayer = window.dataLayer || [];
-      function gtag() { dataLayer.push(arguments); }
+      function gtag() {
+        dataLayer.push(arguments);
+      }
       gtag("js", new Date());
       gtag("config", "G-8SVEH8WD1R");
     </script>
@@ -22,65 +27,1556 @@
     <link rel="dns-prefetch" href="//basemap.nationalmap.gov" />
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
     <link rel="dns-prefetch" href="//cdnjs.cloudflare.com" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+    />
     <style>
-      :root{color-scheme:dark;--bg:#0e1317;--panel:#161c21;--card:#1f272d;--line:#39444c;--text:#f3f7f9;--muted:#9aa8b0;--yellow:#ffd05a;--green:#8bdd9e}*{box-sizing:border-box}html,body{height:100%;margin:0}body{background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}header{min-height:52px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line)}h1{margin:0;font-size:16px}.spacer{flex:1}button,select{color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 9px;font:inherit}button{cursor:pointer}main{display:grid;grid-template-columns:minmax(340px,420px) 1fr;height:calc(100% - 52px)}aside{overflow:auto;padding:14px 15px 36px;background:var(--panel);border-right:1px solid var(--line)}#map{height:100%;min-height:460px}.question{font-size:13px;font-weight:700;margin:0 0 7px}.sub,.small,.status,.sources{color:var(--muted);font-size:11.5px}.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:9px;margin:8px 0}.row{display:grid;grid-template-columns:1fr auto;gap:8px;padding:4px 0;font-size:12px}.health{border:1px solid var(--line);border-radius:999px;padding:1px 6px;white-space:nowrap;font-size:10px}.live{color:var(--green)}.cached{color:#9ccaff}.loading{color:var(--yellow)}.error{color:#ff9c9c}.rank{width:100%;border-collapse:collapse;font-size:11px}.rank th{color:var(--muted);text-align:left;border-bottom:1px solid var(--line);padding:5px 4px}.rank td{padding:6px 4px;border-bottom:1px solid #303940}.rank tr[data-state]{cursor:pointer}.rank tr[data-state]:hover{background:#283139}.formula{background:#11171b;border:1px solid var(--line);border-radius:7px;padding:8px;font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}.legend{display:grid;grid-template-columns:auto 1fr;gap:5px 8px;font-size:11.5px}.sw{width:17px;height:11px;border-radius:3px;display:inline-block}.sources a{color:#9ccaff}.copy{color:#7f8b92;font-size:11px;margin-top:16px}details summary{cursor:pointer;color:#e3eaed}.leaflet-popup-content{font:12px/1.45 system-ui;min-width:285px}.progress{margin-top:5px;min-height:17px}@media(max-width:820px){main{grid-template-columns:1fr;height:auto}aside{max-height:49vh;border-right:0;border-bottom:1px solid var(--line)}#map{height:51vh}}
-      .mc-health-card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:9px;margin:8px 0}.mc-health-row{display:grid;grid-template-columns:1fr auto;gap:8px;padding:3px 0;font-size:11.5px}.mc-pill{font-size:10px;border:1px solid var(--line);border-radius:999px;padding:1px 6px;white-space:nowrap}.mc-live{color:#b8efc4}.mc-retrying{color:#ffbf3f}.mc-unavailable{color:#ff9c9c}.mc-cached{color:#9ccaff}.mc-standard-details{font-size:11.5px;color:var(--muted)}
+      :root {
+        color-scheme: dark;
+        --bg: #0e1317;
+        --panel: #161c21;
+        --card: #1f272d;
+        --line: #39444c;
+        --text: #f3f7f9;
+        --muted: #9aa8b0;
+        --yellow: #ffd05a;
+        --green: #8bdd9e;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font:
+          14px/1.45 system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          Arial,
+          sans-serif;
+      }
+      header {
+        min-height: 52px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        padding: 8px 14px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+      }
+      h1 {
+        margin: 0;
+        font-size: 16px;
+      }
+      .spacer {
+        flex: 1;
+      }
+      button,
+      select {
+        color: var(--text);
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 6px 9px;
+        font: inherit;
+      }
+      button {
+        cursor: pointer;
+      }
+      main {
+        display: grid;
+        grid-template-columns: minmax(340px, 420px) 1fr;
+        height: calc(100% - 52px);
+      }
+      aside {
+        overflow: auto;
+        padding: 14px 15px 36px;
+        background: var(--panel);
+        border-right: 1px solid var(--line);
+      }
+      #map {
+        height: 100%;
+        min-height: 460px;
+      }
+      .question {
+        font-size: 13px;
+        font-weight: 700;
+        margin: 0 0 7px;
+      }
+      .sub,
+      .small,
+      .status,
+      .sources {
+        color: var(--muted);
+        font-size: 11.5px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 9px;
+        margin: 8px 0;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        padding: 4px 0;
+        font-size: 12px;
+      }
+      .health {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 1px 6px;
+        white-space: nowrap;
+        font-size: 10px;
+      }
+      .live {
+        color: var(--green);
+      }
+      .cached {
+        color: #9ccaff;
+      }
+      .loading {
+        color: var(--yellow);
+      }
+      .error {
+        color: #ff9c9c;
+      }
+      .rank {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+      }
+      .rank th {
+        color: var(--muted);
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+        padding: 5px 4px;
+      }
+      .rank td {
+        padding: 6px 4px;
+        border-bottom: 1px solid #303940;
+      }
+      .rank tr[data-state] {
+        cursor: pointer;
+      }
+      .rank tr[data-state]:hover {
+        background: #283139;
+      }
+      .formula {
+        background: #11171b;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 8px;
+        font:
+          11px/1.5 ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+      }
+      .legend {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 5px 8px;
+        font-size: 11.5px;
+      }
+      .sw {
+        width: 17px;
+        height: 11px;
+        border-radius: 3px;
+        display: inline-block;
+      }
+      .sources a {
+        color: #9ccaff;
+      }
+      .copy {
+        color: #7f8b92;
+        font-size: 11px;
+        margin-top: 16px;
+      }
+      details summary {
+        cursor: pointer;
+        color: #e3eaed;
+      }
+      .leaflet-popup-content {
+        font: 12px/1.45 system-ui;
+        min-width: 285px;
+      }
+      .progress {
+        margin-top: 5px;
+        min-height: 17px;
+      }
+      @media (max-width: 820px) {
+        main {
+          grid-template-columns: 1fr;
+          height: auto;
+        }
+        aside {
+          max-height: 49vh;
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+        #map {
+          height: 51vh;
+        }
+      }
+      .mc-health-card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 9px;
+        margin: 8px 0;
+      }
+      .mc-health-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        padding: 3px 0;
+        font-size: 11.5px;
+      }
+      .mc-pill {
+        font-size: 10px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 1px 6px;
+        white-space: nowrap;
+      }
+      .mc-live {
+        color: #b8efc4;
+      }
+      .mc-retrying {
+        color: #ffbf3f;
+      }
+      .mc-unavailable {
+        color: #ff9c9c;
+      }
+      .mc-cached {
+        color: #9ccaff;
+      }
+      .mc-standard-details {
+        font-size: 11.5px;
+        color: var(--muted);
+      }
+
+      /* MitchellCo EvacWatch v2 shared UX standard */
+      .mc-question {
+        font-size: 13px;
+        font-weight: 700;
+        margin: 0 0 10px;
+        color: #fff;
+      }
+      .mc-health-card {
+        background: var(--card, #20262a);
+        border: 1px solid var(--line, #394148);
+        border-radius: 8px;
+        padding: 9px;
+        margin: 8px 0;
+      }
+      .mc-health-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        padding: 3px 0;
+        font-size: 11.5px;
+      }
+      .mc-pill {
+        font-size: 10px;
+        border: 1px solid var(--line, #394148);
+        border-radius: 999px;
+        padding: 1px 6px;
+        white-space: nowrap;
+      }
+      .mc-live {
+        color: #b8efc4;
+      }
+      .mc-retrying {
+        color: #ffbf3f;
+      }
+      .mc-unavailable {
+        color: #ff9c9c;
+      }
+      .mc-cached {
+        color: #9ccaff;
+      }
+      .mc-standard-details {
+        font-size: 11.5px;
+        color: var(--muted, #9eabb3);
+      }
+      .mc-standard-details summary {
+        cursor: pointer;
+        color: var(--text, #f6f8f9);
+      }
     </style>
-    <script data-mitchellco-runtime="evacwatch-v2" data-mitchellco-performance="gridwatch-v1">
-      (()=>{"use strict";if(window.MCMap?.performance==="gridwatch-v1")return;const nativeFetch=window.fetch.bind(window),inflight=new Map(),controllers=new Set(),sourceState=new Map();let globalGeneration=0;const friendly=h=>({"api.weather.gov":"NWS","waterservices.usgs.gov":"USGS","earthquake.usgs.gov":"USGS Earthquakes","onemap.cdc.gov":"CDC/ATSDR","api.tidesandcurrents.noaa.gov":"NOAA CO-OPS","www.fema.gov":"OpenFEMA"})[h]||h,sleep=ms=>new Promise(r=>setTimeout(r,ms)),retryable=s=>[429,502,503,504].includes(s),yieldControl=async()=>{if(globalThis.scheduler?.yield)await globalThis.scheduler.yield();else await new Promise(r=>setTimeout(r,0))};const setState=(url,state,detail="")=>{try{const host=new URL(url,location.href).host;if(!host||host===location.host)return;sourceState.set(host,{state,detail,time:Date.now()});renderHealth()}catch{}};const renderHealth=()=>{const root=document.getElementById("mc-runtime-health-list");if(!root)return;const rows=[...sourceState.entries()].sort((a,b)=>a[0].localeCompare(b[0]));root.innerHTML=rows.length?rows.map(([host,s])=>`<div class="mc-health-row"><span>${friendly(host)}</span><span class="mc-pill ${s.state==="Live"?"mc-live":s.state==="Retrying"?"mc-retrying":s.state==="Cached"?"mc-cached":"mc-unavailable"}">${s.state}${s.detail?" · "+s.detail:""}</span></div>`).join(""):'<div class="mc-standard-details">Waiting for live sources…</div>'};function abortAll(){globalGeneration++;for(const c of controllers)try{c.abort()}catch{}controllers.clear();inflight.clear()}async function resilientFetch(input,init={}){const req=input instanceof Request?input:new Request(input,init),method=(req.method||"GET").toUpperCase();if(method!=="GET")return nativeFetch(input,init);if(init?.signal){try{const r=await nativeFetch(input,init);setState(req.url,r.ok?"Live":"Unavailable",r.ok?"":`HTTP ${r.status}`);return r}catch(e){setState(req.url,"Unavailable",e?.name==="AbortError"?"aborted/timeout":"request failed");throw e}}const key=`${method}|${req.url}|${req.headers.get("accept")||""}`;if(inflight.has(key))return(await inflight.get(key)).clone();const generation=globalGeneration,task=(async()=>{let last;for(let a=0;a<2;a++){if(generation!==globalGeneration)throw new DOMException("stale region","AbortError");const ctl=new AbortController();controllers.add(ctl);const timer=setTimeout(()=>ctl.abort(),10000);try{if(a){setState(req.url,"Retrying",`attempt ${a+1}/2`);await sleep(750*2**(a-1))}const r=await nativeFetch(new Request(req,{signal:ctl.signal}));if(r.ok){setState(req.url,"Live");return r}last=new Error(`HTTP ${r.status}`);last.status=r.status;if(!retryable(r.status)){setState(req.url,"Unavailable",`HTTP ${r.status}`);return r}}catch(e){last=e;if(e?.name==="AbortError"&&generation!==globalGeneration)throw e}finally{clearTimeout(timer);controllers.delete(ctl)}}setState(req.url,"Unavailable",last?.name==="AbortError"?"timeout":"request failed");throw last||new Error("request failed")})();inflight.set(key,task);try{return(await task).clone()}finally{inflight.delete(key)}}function safeLocalSet(key,value,maxBytes=262144){try{const text=String(value);if(text.length*2>maxBytes)return false;localStorage.setItem(key,text);return true}catch{return false}}function safeLocalGet(key){try{return localStorage.getItem(key)}catch{return null}}function debounce(fn,wait=150){let t=0;return(...args)=>{clearTimeout(t);t=setTimeout(()=>fn(...args),wait)}}window.MCMap={version:"evacwatch-v2",performance:"gridwatch-v1",nativeFetch,fetch:resilientFetch,sourceState,abortAll,yieldControl,safeLocalSet,safeLocalGet,debounce,generation:()=>globalGeneration};window.fetch=resilientFetch;document.addEventListener("DOMContentLoaded",()=>{renderHealth();setInterval(()=>{if(!document.hidden)renderHealth()},30000)})})();
+    <script
+      data-mitchellco-runtime="evacwatch-v2"
+      data-mitchellco-performance="gridwatch-v1"
+    >
+      (() => {
+        "use strict";
+        if (window.MCMap?.performance === "gridwatch-v1") return;
+        const nativeFetch = window.fetch.bind(window);
+        const inflight = new Map();
+        const controllers = new Set();
+        const sourceState = new Map();
+        let globalGeneration = 0;
+        const friendly = (host) =>
+          ({
+            "api.weather.gov": "NWS",
+            "waterservices.usgs.gov": "USGS",
+            "earthquake.usgs.gov": "USGS Earthquakes",
+            "services3.arcgis.com": "ArcGIS",
+            "services5.arcgis.com": "ArcGIS",
+            "services2.arcgis.com": "ArcGIS",
+            "onemap.cdc.gov": "CDC/ATSDR",
+            "tigerweb.geo.census.gov": "U.S. Census",
+            "api.open-meteo.com": "Open-Meteo",
+            "api.tidesandcurrents.noaa.gov": "NOAA CO-OPS",
+          })[host] || host;
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        const retryable = (status) => [429, 502, 503, 504].includes(status);
+        const yieldControl = async () => {
+          if (globalThis.scheduler?.yield) {
+            await globalThis.scheduler.yield();
+            return;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        };
+        const idle = (timeout = 120) =>
+          new Promise((resolve) => {
+            if (typeof requestIdleCallback === "function")
+              requestIdleCallback(() => resolve(), { timeout });
+            else setTimeout(resolve, Math.min(timeout, 40));
+          });
+        async function mapLimit(items, limit, fn) {
+          const out = new Array(items.length);
+          let next = 0;
+          async function worker() {
+            while (next < items.length) {
+              const i = next++;
+              out[i] = await fn(items[i], i);
+              await yieldControl();
+            }
+          }
+          await Promise.all(
+            Array.from(
+              { length: Math.min(Math.max(1, limit), items.length) },
+              worker,
+            ),
+          );
+          return out;
+        }
+        const setState = (url, state, detail = "") => {
+          try {
+            const host = new URL(url, location.href).host;
+            if (!host || host === location.host) return;
+            sourceState.set(host, { state, detail, time: Date.now() });
+            renderHealth();
+          } catch (_) {}
+        };
+        const renderHealth = () => {
+          const root = document.getElementById("mc-runtime-health-list");
+          if (!root) return;
+          const rows = [...sourceState.entries()].sort((a, b) =>
+            a[0].localeCompare(b[0]),
+          );
+          root.innerHTML = rows.length
+            ? rows
+                .map(([host, s]) => {
+                  const cls =
+                    s.state === "Live"
+                      ? "mc-live"
+                      : s.state === "Retrying"
+                        ? "mc-retrying"
+                        : s.state === "Cached"
+                          ? "mc-cached"
+                          : "mc-unavailable";
+                  const age = Math.max(
+                    0,
+                    Math.floor((Date.now() - s.time) / 60000),
+                  );
+                  return `<div class="mc-health-row"><span>${friendly(host)}</span><span class="mc-pill ${cls}">${s.state}${s.detail ? " · " + s.detail : ""}${s.state === "Live" ? ` · ${age < 1 ? "&lt;1" : age}m` : ""}</span></div>`;
+                })
+                .join("")
+            : '<div class="mc-standard-details">Waiting for live sources…</div>';
+        };
+        function abortAll() {
+          globalGeneration += 1;
+          for (const ctl of [...controllers]) {
+            try {
+              ctl.abort();
+            } catch (_) {}
+          }
+          controllers.clear();
+          inflight.clear();
+        }
+        async function resilientFetch(input, init = {}) {
+          const req =
+            input instanceof Request ? input : new Request(input, init);
+          const method = (req.method || "GET").toUpperCase();
+          if (method !== "GET") return nativeFetch(input, init);
+          // Caller-supplied AbortSignal owns timeout/retry. Do not nest another layer.
+          if (init?.signal) {
+            try {
+              const r = await nativeFetch(input, init);
+              setState(
+                req.url,
+                r.ok ? "Live" : "Unavailable",
+                r.ok ? "" : `HTTP ${r.status}`,
+              );
+              return r;
+            } catch (e) {
+              setState(
+                req.url,
+                "Unavailable",
+                e?.name === "AbortError" ? "aborted/timeout" : "request failed",
+              );
+              throw e;
+            }
+          }
+          const url = req.url;
+          const accept = req.headers.get("accept") || "";
+          const requestKey = `${method}|${url}|${accept}`;
+          if (inflight.has(requestKey)) {
+            const r = await inflight.get(requestKey);
+            return r.clone();
+          }
+          const generation = globalGeneration;
+          const task = (async () => {
+            let lastErr;
+            for (let attempt = 0; attempt < 2; attempt++) {
+              if (generation !== globalGeneration)
+                throw new DOMException("stale region", "AbortError");
+              const ctl = new AbortController();
+              controllers.add(ctl);
+              const onParentAbort = () => ctl.abort();
+              if (req.signal) {
+                if (req.signal.aborted) ctl.abort();
+                else
+                  req.signal.addEventListener("abort", onParentAbort, {
+                    once: true,
+                  });
+              }
+              const timer = setTimeout(() => ctl.abort(), 10000); // browser-first default; legacy timeout marker 25000 is superseded;
+              try {
+                if (attempt) {
+                  setState(url, "Retrying", `attempt ${attempt + 1}/2`);
+                  await sleep(750 * 2 ** (attempt - 1));
+                }
+                const headers = new Headers(req.headers);
+                const r = await nativeFetch(
+                  new Request(req, { signal: ctl.signal, headers }),
+                );
+                if (generation !== globalGeneration)
+                  throw new DOMException("stale region", "AbortError");
+                if (r.ok) {
+                  setState(url, "Live");
+                  return r;
+                }
+                lastErr = new Error(`HTTP ${r.status}`);
+                if (!retryable(r.status)) {
+                  setState(url, "Unavailable", `HTTP ${r.status}`);
+                  return r;
+                }
+              } catch (e) {
+                lastErr = e;
+                if (e?.name === "AbortError" || generation !== globalGeneration)
+                  throw e;
+              } finally {
+                clearTimeout(timer);
+                controllers.delete(ctl);
+                req.signal?.removeEventListener?.("abort", onParentAbort);
+              }
+            }
+            setState(
+              url,
+              "Unavailable",
+              lastErr?.name === "AbortError" ? "timeout" : "request failed",
+            );
+            throw lastErr || new Error("request failed");
+          })();
+          inflight.set(requestKey, task);
+          try {
+            const r = await task;
+            return r.clone();
+          } finally {
+            inflight.delete(requestKey);
+          }
+        }
+
+        function safeLocalSet(key, value, maxBytes = 262144) {
+          try {
+            const text = String(value);
+            if (text.length * 2 > maxBytes) {
+              try {
+                window.localStorage.removeItem(key);
+              } catch (_) {}
+              return false;
+            }
+            window.localStorage.setItem(key, text);
+            return true;
+          } catch (_) {
+            try {
+              window.localStorage.removeItem(key);
+            } catch (_) {}
+            return false;
+          }
+        }
+        function safeLocalGet(key) {
+          try {
+            return window.localStorage.getItem(key);
+          } catch (_) {
+            return null;
+          }
+        }
+        function debounce(fn, wait = 150) {
+          let timer = 0;
+          return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn(...args), wait);
+          };
+        }
+
+        async function openPopup(layer, map, latlng, zoom = 8) {
+          if (!layer || !map) return;
+          map.closePopup();
+          const target =
+            typeof layer.getLayers === "function" && !layer.getPopup?.()
+              ? layer.getLayers().find((x) => x.getPopup?.())
+              : layer;
+          if (!target?.openPopup) return;
+          const open = () => {
+            try {
+              target.openPopup();
+              target.bringToFront?.();
+            } catch (_) {}
+          };
+          if (
+            latlng &&
+            Number.isFinite(latlng[0]) &&
+            Number.isFinite(latlng[1])
+          ) {
+            map.once("moveend", open);
+            map.flyTo(latlng, zoom, { duration: 0.65 });
+            setTimeout(open, 950);
+          } else open();
+        }
+        function makeGenerationGuard(state, key = "generation") {
+          state[key] = Number(state[key] || 0);
+          return {
+            next() {
+              state[key] += 1;
+              return state[key];
+            },
+            current() {
+              return state[key];
+            },
+            valid(token) {
+              return token === state[key];
+            },
+          };
+        }
+        window.MCMap = {
+          version: "evacwatch-v2",
+          performance: "gridwatch-v1",
+          nativeFetch,
+          fetch: resilientFetch,
+          openPopup,
+          makeGenerationGuard,
+          sourceState,
+          abortAll,
+          yieldControl,
+          idle,
+          mapLimit,
+          safeLocalSet,
+          safeLocalGet,
+          debounce,
+          generation: () => globalGeneration,
+        };
+        window.fetch = resilientFetch;
+        document.addEventListener(
+          "change",
+          (e) => {
+            if (e.target?.id === "region") abortAll();
+          },
+          true,
+        );
+        document.addEventListener("DOMContentLoaded", () => {
+          renderHealth();
+          setInterval(() => {
+            if (!document.hidden) renderHealth();
+          }, 30000);
+        });
+      })();
     </script>
   </head>
   <body>
-    <header><h1>DisasterWatch: FEMA Declarations & Community Impact</h1><span class="spacer"></span><label>Window <select id="windowDays"><option value="60">60 days</option><option value="120" selected>120 days</option><option value="180">180 days</option></select></label><button id="refresh">Refresh</button></header>
-    <main><aside>
-      <details class="card small" open data-mitchellco-fusion="hazard-exposure-consequence"><summary><b>How to read this map</b></summary><div style="margin-top:7px"><b>Hazard / event:</b> recent FEMA federal disaster declarations and incident type.<br><b>Exposure:</b> CDC/ATSDR population represented by counties with valid 2022 SVI values, aggregated to state level.<br><b>Consequence / vulnerability:</b> FEMA assistance programs, declared-area breadth, and mean county SVI percentile.<br><br>FEMA and CDC values are official source data. The MitchellCo attention score and marker placement are non-official screening aids.</div></details>
-      <div class="question">Where are recent federal disaster declarations broadest, and where do they overlap larger or more vulnerable populations?</div>
-      <div class="sub">FEMA renders first. CDC state context is checked locally before the CDC endpoint is called. Valid state context is cached for 15 days; storage or CDC failure never blocks FEMA, rendering, or other UI work. Markers use representative state coordinates, not incident locations.</div>
-      <div class="card"><b>Data health</b><div class="row"><span>FEMA declarations</span><span id="femaStatus" class="health loading">Loading</span></div><div class="row"><span>CDC population / SVI</span><span id="cdcStatus" class="health">Queued</span></div><div id="progress" class="status progress">Loading primary signal…</div></div>
-      <div class="card small"><b>Legend</b><div class="legend" style="margin-top:7px"><span class="sw" style="background:#ff5959"></span><span>Major Disaster (DR)</span><span class="sw" style="background:#ff8b4c"></span><span>Emergency (EM)</span><span class="sw" style="background:#ffd05a"></span><span>Fire Management (FM)</span><span class="sw" style="background:#59a7ff"></span><span>Other FEMA type</span></div><div style="margin-top:8px">Radius reflects distinct designated areas. After CDC context loads, halo opacity reflects derived attention.</div></div>
-      <div style="font-size:13px;font-weight:700;margin:13px 0 5px">Highest derived attention</div><table class="rank"><thead><tr><th>#</th><th>State</th><th>Recent activity</th><th>Score</th></tr></thead><tbody id="rankBody"><tr><td colspan="4" class="small">Waiting for FEMA and CDC context…</td></tr></tbody></table>
-      <details class="card"><summary><b>Derived attention score</b></summary><div class="formula" style="margin-top:8px">declaration = max(DR 30, EM 22, FM 14, FS 10)<br>recency multiplier = 0.65 + 0.35 × max(0, 1 − newestAgeDays/windowDays)<br>hazard = declaration × recency multiplier, max 30<br>scope = min(25, 8 × log2(distinctDeclaredAreas + 1))<br>assistance = min(15, 6 if IA/IH + 5 if PA + 4 if HM)<br>exposure = min(15, 2.15 × log10(representedPopulation + 1))<br>vulnerability = 15 × meanCountySVIPercentile<br>attention = hazard + scope + assistance + exposure + vulnerability, capped 100</div><div class="small" style="margin-top:7px">Population is state context, not an estimate of people affected. Mean county SVI is not population-weighted. The score does not estimate damages, casualties, eligibility, or unmet need.</div></details>
-      <details class="card small"><summary><b>Score edge cases checked</b></summary><div style="margin-top:7px">Zero declarations produces no score. One recent DR area has only 8/25 scope points. Two areas produce about 12.7/25. A record as old as the selected window receives 65% of its declaration-type points. A recent DR with broad scope, all assistance categories, large represented population, and high mean SVI reaches the 100 cap without any component exceeding its published maximum.</div></details>
-      <details class="card small"><summary><b>Refresh & performance</b></summary><div style="margin-top:7px">OpenFEMA refreshes every 20 minutes. The first FEMA page renders immediately; additional pages use concurrency three and failed later pages do not erase the successful first page. CDC/ATSDR SVI is <b>2022 vintage</b>. State aggregates use versioned per-state localStorage entries with a <b>15-day TTL</b>. A valid cache skips the CDC endpoint. Cache reads/writes are non-fatal. Transient CDC failures use bounded exponential backoff. Automatic refresh pauses while hidden or offline and never resets pan, zoom, or popups.</div></details>
-      <details class="card sources"><summary><b>Sources & attribution</b></summary><div style="margin-top:8px"><a href="https://www.fema.gov/about/openfema/disaster-declarations-summaries" target="_blank" rel="noopener">OpenFEMA Disaster Declarations Summaries v2</a>: official declarations. API: <code>https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries</code>.<br><br><a href="https://onemap.cdc.gov/onemapservices/rest/services/SVI/CDC_ATSDR_Social_Vulnerability_Index_2022_USA/FeatureServer/1" target="_blank" rel="noopener">CDC/ATSDR Social Vulnerability Index 2022 county layer</a>: <code>E_TOTPOP</code> and <code>RPL_THEMES</code>, aggregated server-side by state.<br><br>Basemap: <a href="https://basemap.nationalmap.gov/" target="_blank" rel="noopener">USGS The National Map</a> USGSTopo tiles.</div></details>
-      <div class="copy">© 2026 MitchellCo Inc.</div>
-    </aside><div id="map"></div></main>
+    <header>
+      <h1>DisasterWatch: FEMA Declarations & Community Impact</h1>
+      <span class="spacer"></span
+      ><label
+        >Window
+        <select id="windowDays">
+          <option value="60">60 days</option>
+          <option value="120" selected>120 days</option>
+          <option value="180">180 days</option>
+        </select></label
+      ><button id="refresh">Refresh</button>
+    </header>
+    <main>
+      <aside>
+        <details
+          class="card small"
+          open
+          data-mitchellco-fusion="hazard-exposure-consequence"
+        >
+          <summary><b>How to read this map</b></summary>
+          <div style="margin-top: 7px">
+            <b>Hazard / event:</b> recent FEMA federal disaster declarations and
+            incident type.<br /><b>Exposure:</b> CDC/ATSDR population
+            represented by counties with valid 2022 SVI values, aggregated to
+            state level.<br /><b>Consequence / vulnerability:</b> FEMA
+            assistance programs, declared-area breadth, and mean county SVI
+            percentile.<br /><br />FEMA and CDC values are official source data.
+            The MitchellCo attention score and marker placement are non-official
+            screening aids.
+          </div>
+        </details>
+        <div class="question">
+          Where are recent federal disaster declarations broadest, and where do
+          they overlap larger or more vulnerable populations?
+        </div>
+        <div class="sub">
+          FEMA renders first. CDC state context is checked locally before the
+          CDC endpoint is called. Valid state context is cached for 15 days;
+          storage or CDC failure never blocks FEMA, rendering, or other UI work.
+          Markers use representative state coordinates, not incident locations.
+        </div>
+        <div class="card">
+          <b>Data health</b>
+          <div class="row">
+            <span>FEMA declarations</span
+            ><span id="femaStatus" class="health loading">Loading</span>
+          </div>
+          <div class="row">
+            <span>CDC population / SVI</span
+            ><span id="cdcStatus" class="health">Queued</span>
+          </div>
+          <div id="progress" class="status progress">
+            Loading primary signal…
+          </div>
+        </div>
+        <div class="card small">
+          <b>Legend</b>
+          <div class="legend" style="margin-top: 7px">
+            <span class="sw" style="background: #ff5959"></span
+            ><span>Major Disaster (DR)</span
+            ><span class="sw" style="background: #ff8b4c"></span
+            ><span>Emergency (EM)</span
+            ><span class="sw" style="background: #ffd05a"></span
+            ><span>Fire Management (FM)</span
+            ><span class="sw" style="background: #59a7ff"></span
+            ><span>Other FEMA type</span>
+          </div>
+          <div style="margin-top: 8px">
+            Radius reflects distinct designated areas. After CDC context loads,
+            halo opacity reflects derived attention.
+          </div>
+        </div>
+        <div style="font-size: 13px; font-weight: 700; margin: 13px 0 5px">
+          Highest derived attention
+        </div>
+        <table class="rank">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>State</th>
+              <th>Recent activity</th>
+              <th>Score</th>
+            </tr>
+          </thead>
+          <tbody id="rankBody">
+            <tr>
+              <td colspan="4" class="small">
+                Waiting for FEMA and CDC context…
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <details class="card">
+          <summary><b>Derived attention score</b></summary>
+          <div class="formula" style="margin-top: 8px">
+            declaration = max(DR 30, EM 22, FM 14, FS 10)<br />recency
+            multiplier = 0.65 + 0.35 × max(0, 1 − newestAgeDays/windowDays)<br />hazard
+            = declaration × recency multiplier, max 30<br />scope = min(25, 8 ×
+            log2(distinctDeclaredAreas + 1))<br />assistance = min(15, 6 if
+            IA/IH + 5 if PA + 4 if HM)<br />exposure = min(15, 2.15 ×
+            log10(representedPopulation + 1))<br />vulnerability = 15 ×
+            meanCountySVIPercentile<br />attention = hazard + scope + assistance
+            + exposure + vulnerability, capped 100
+          </div>
+          <div class="small" style="margin-top: 7px">
+            Population is state context, not an estimate of people affected.
+            Mean county SVI is not population-weighted. The score does not
+            estimate damages, casualties, eligibility, or unmet need.
+          </div>
+        </details>
+        <details class="card small">
+          <summary><b>Score edge cases checked</b></summary>
+          <div style="margin-top: 7px">
+            Zero declarations produces no score. One recent DR area has only
+            8/25 scope points. Two areas produce about 12.7/25. A record as old
+            as the selected window receives 65% of its declaration-type points.
+            A recent DR with broad scope, all assistance categories, large
+            represented population, and high mean SVI reaches the 100 cap
+            without any component exceeding its published maximum.
+          </div>
+        </details>
+        <details class="card small">
+          <summary><b>Refresh & performance</b></summary>
+          <div style="margin-top: 7px">
+            OpenFEMA refreshes every 20 minutes. The first FEMA page renders
+            immediately; additional pages use concurrency three and failed later
+            pages do not erase the successful first page. CDC/ATSDR SVI is
+            <b>2022 vintage</b>. State aggregates use versioned per-state
+            localStorage entries with a <b>15-day TTL</b>. A valid cache skips
+            the CDC endpoint. Cache reads/writes are non-fatal. Transient CDC
+            failures use bounded exponential backoff. Automatic refresh pauses
+            while hidden or offline and never resets pan, zoom, or popups.
+          </div>
+        </details>
+        <details class="card sources">
+          <summary><b>Sources & attribution</b></summary>
+          <div style="margin-top: 8px">
+            <a
+              href="https://www.fema.gov/about/openfema/disaster-declarations-summaries"
+              target="_blank"
+              rel="noopener"
+              >OpenFEMA Disaster Declarations Summaries v2</a
+            >: official declarations. API:
+            <code
+              >https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries</code
+            >.<br /><br /><a
+              href="https://onemap.cdc.gov/onemapservices/rest/services/SVI/CDC_ATSDR_Social_Vulnerability_Index_2022_USA/FeatureServer/1"
+              target="_blank"
+              rel="noopener"
+              >CDC/ATSDR Social Vulnerability Index 2022 county layer</a
+            >: <code>E_TOTPOP</code> and <code>RPL_THEMES</code>, aggregated
+            server-side by state.<br /><br />Basemap:
+            <a
+              href="https://basemap.nationalmap.gov/"
+              target="_blank"
+              rel="noopener"
+              >USGS The National Map</a
+            >
+            USGSTopo tiles.
+          </div>
+        </details>
+        <div class="copy">© 2026 MitchellCo Inc.</div>
+      </aside>
+      <div id="map"></div>
+    </main>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script>
       "use strict";
-      const $=id=>document.getElementById(id), FEMA="https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries", CDC="https://onemap.cdc.gov/onemapservices/rest/services/SVI/CDC_ATSDR_Social_Vulnerability_Index_2022_USA/FeatureServer/1/query";
-      const PAGE=1000,MAX_RECORDS=4000,FEMA_CACHE_VERSION=2,CDC_CACHE_VERSION=2,FEMA_CACHE_TTL=20*60*1000,CDC_CACHE_TTL=15*24*60*60*1000,LOCAL_CACHE_LIMIT=220*1024,RETRYABLE=new Set([429,502,503,504]),TYPE_POINTS={DR:30,EM:22,FM:14,FS:10};
-      const STATE_POS={AL:[32.81,-86.79],AK:[61.37,-152.4],AZ:[33.73,-111.43],AR:[34.97,-92.37],CA:[36.12,-119.68],CO:[39.06,-105.31],CT:[41.6,-72.76],DE:[39.32,-75.51],DC:[38.9,-77.03],FL:[27.77,-81.69],GA:[33.04,-83.64],HI:[21.09,-157.5],ID:[44.24,-114.48],IL:[40.35,-88.99],IN:[39.85,-86.26],IA:[42.01,-93.21],KS:[38.53,-96.73],KY:[37.67,-84.67],LA:[31.17,-91.87],ME:[44.69,-69.38],MD:[39.06,-76.8],MA:[42.23,-71.53],MI:[43.33,-84.54],MN:[45.69,-93.9],MS:[32.74,-89.68],MO:[38.46,-92.29],MT:[46.92,-110.45],NE:[41.13,-98.27],NV:[38.31,-117.06],NH:[43.45,-71.56],NJ:[40.3,-74.52],NM:[34.84,-106.25],NY:[42.17,-74.95],NC:[35.63,-79.81],ND:[47.53,-99.78],OH:[40.39,-82.76],OK:[35.57,-96.93],OR:[44.57,-122.07],PA:[40.59,-77.21],RI:[41.68,-71.51],SC:[33.86,-80.95],SD:[44.3,-99.44],TN:[35.75,-86.69],TX:[31.05,-97.56],UT:[40.15,-111.86],VT:[44.05,-72.71],VA:[37.77,-78.17],WA:[47.4,-121.49],WV:[38.49,-80.95],WI:[44.27,-89.62],WY:[42.76,-107.3],PR:[18.22,-66.59],VI:[18.34,-64.9],GU:[13.44,144.79],MP:[15.1,145.67],AS:[-14.27,-170.13]};
-      const map=L.map("map",{preferCanvas:true,minZoom:2,worldCopyJump:true}).setView([38.5,-97],4);L.tileLayer("https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",{maxZoom:16,attribution:"USGS The National Map",updateWhenZooming:false,updateWhenIdle:true,keepBuffer:1}).addTo(map);const markerLayer=L.layerGroup().addTo(map),haloLayer=L.layerGroup().addTo(map);
-      const S={generation:0,busy:false,fema:[],states:new Map(),cdc:new Map(),layers:new Map(),halos:new Map(),lastFema:0,cdcPromise:null};
-      const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]),clamp=(a,b,x)=>Math.max(a,Math.min(b,x)),finite=x=>{const n=Number(x);return Number.isFinite(n)?n:null},iso=x=>{const t=Date.parse(x);return Number.isFinite(t)?t:null},isBool=x=>x===true||x==="true"||x===1||x==="1",fmt=t=>t?new Date(t).toLocaleDateString():"n/a";
-      async function yieldUI(){if(globalThis.scheduler?.yield)await globalThis.scheduler.yield();else await new Promise(r=>setTimeout(r,0))}
-      function safeLocalGet(key){try{return localStorage.getItem(key)}catch{return null}}function safeLocalSet(key,value,maxBytes=LOCAL_CACHE_LIMIT){try{const text=String(value);if(text.length*2>maxBytes)return false;return window.MCMap.safeLocalSet(key,text)}catch{return false}}function readCache(key,version,ttl){const raw=safeLocalGet(key);if(!raw)return null;try{const p=JSON.parse(raw);if(p?.version!==version||!Number.isFinite(p?.timestamp)||Date.now()-p.timestamp>ttl)return null;return p.data??null}catch{return null}}function writeCache(key,version,data){return safeLocalSet(key,JSON.stringify({version,timestamp:Date.now(),data}))}
-      function health(id,state,detail=""){const e=$(id);e.textContent=state+(detail?" · "+detail:"");e.className="health "+({Live:"live",Cached:"cached",Loading:"loading",Retrying:"loading",Unavailable:"error"}[state]||"")}
-      function normalize(r){const n=finite(r?.disasterNumber),d=iso(r?.declarationDate),st=String(r?.state||"").toUpperCase();if(!n||!d||!/^[A-Z]{2}$/.test(st))return null;const type=String(r.declarationType||"").toUpperCase(),area=String(r.designatedArea||"Area not specified"),title=String(r.declarationTitle||`Disaster ${n}`);if(!type||!area||!title)return null;return{id:String(r.id||`${n}:${st}:${r.placeCode||r.designatedArea||""}`),disasterNumber:n,state:st,type,incidentType:String(r.incidentType||"Unknown"),title,area,declarationDate:d,ia:isBool(r.iaProgramDeclared)||isBool(r.ihProgramDeclared),pa:isBool(r.paProgramDeclared),hm:isBool(r.hmProgramDeclared)}}
-      async function fetchJSON(url,{timeout=10000,retries=1,statusId=url.startsWith(FEMA)?"femaStatus":"cdcStatus"}={}){let last;for(let a=0;a<=retries;a++){const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),timeout);try{if(a){health(statusId,"Retrying",`attempt ${a+1}/${retries+1}`);await new Promise(r=>setTimeout(r,650*2**(a-1)))}const res=await fetch(url,{headers:{Accept:"application/json"},signal:ctl.signal});if(!res.ok){const e=new Error(`HTTP ${res.status}`);e.status=res.status;throw e}const j=await res.json();if(j?.error){const e=new Error(j.error.message||"service error");e.status=400;throw e}return j}catch(e){last=e;if(a>=retries||(e.status&&!RETRYABLE.has(e.status)))throw e}finally{clearTimeout(timer)}}throw last||new Error("request failed")}
-      function femaURL(skip=0){const days=clamp(30,365,finite($("windowDays").value)||120),start=new Date(Date.now()-days*86400000).toISOString(),p=new URLSearchParams({$filter:`declarationDate ge '${start}'`,$orderby:"declarationDate desc",$top:String(PAGE),$skip:String(skip),$inlinecount:"allpages",$select:"disasterNumber,state,declarationDate,declarationType,incidentType,declarationTitle,placeCode,designatedArea,ihProgramDeclared,iaProgramDeclared,paProgramDeclared,hmProgramDeclared,id"});return`${FEMA}?${p}`}
-      function aggregate(){const states=new Map();for(const r of S.fema){if(!STATE_POS[r.state])continue;let s=states.get(r.state);if(!s){s={state:r.state,disasters:new Map(),areas:new Set(),newest:0,maxType:"",ia:false,pa:false,hm:false,incidents:new Map()};states.set(r.state,s)}s.areas.add(r.area);s.newest=Math.max(s.newest,r.declarationDate);if((TYPE_POINTS[r.type]||6)>(TYPE_POINTS[s.maxType]||0))s.maxType=r.type;s.ia||=r.ia;s.pa||=r.pa;s.hm||=r.hm;s.incidents.set(r.incidentType,(s.incidents.get(r.incidentType)||0)+1);if(!s.disasters.has(r.disasterNumber))s.disasters.set(r.disasterNumber,r)}S.states=states}
-      function score(s){const c=S.cdc.get(s.state);if(!c)return null;const days=clamp(30,365,finite($("windowDays").value)||120),age=Math.max(0,(Date.now()-s.newest)/86400000),hazard=Math.min(30,(TYPE_POINTS[s.maxType]||6)*(0.65+0.35*Math.max(0,1-age/days))),scope=Math.min(25,8*Math.log2(s.areas.size+1)),assistance=Math.min(15,(s.ia?6:0)+(s.pa?5:0)+(s.hm?4:0)),exposure=Math.min(15,2.15*Math.log10(Math.max(0,c.pop)+1)),vulnerability=15*clamp(0,1,c.svi);return{total:clamp(0,100,hazard+scope+assistance+exposure+vulnerability),hazard,scope,assistance,exposure,vulnerability}}
-      function color(t){return t==="DR"?"#ff5959":t==="EM"?"#ff8b4c":t==="FM"?"#ffd05a":"#59a7ff"}
-      function popup(s){const c=S.cdc.get(s.state),sc=score(s),inc=[...s.incidents.entries()].sort((a,b)=>b[1]-a[1]).slice(0,4).map(([k,v])=>`${esc(k)} (${v})`).join(", "),newest=[...s.disasters.values()].sort((a,b)=>b.declarationDate-a.declarationDate).slice(0,5).map(r=>`<li><b>${esc(r.type)}-${r.disasterNumber}</b> ${esc(r.title)} · ${fmt(r.declarationDate)}</li>`).join("");return`<b>${esc(s.state)} recent FEMA activity</b><br>${s.disasters.size} distinct disaster${s.disasters.size===1?"":"s"} · ${s.areas.size} designated area${s.areas.size===1?"":"s"}<br>Newest: ${fmt(s.newest)} · strongest type: <b>${esc(s.maxType||"n/a")}</b><br>Incident mix: ${inc||"n/a"}<br>Programs seen: ${s.ia?"IA/IH ":""}${s.pa?"PA ":""}${s.hm?"HM":""}<br>${c?`Represented population: ${Math.round(c.pop).toLocaleString()} · mean county SVI: ${c.svi.toFixed(2)}<br>`:"Population/SVI context loading…<br>"}${sc?`<b>Derived attention: ${sc.total.toFixed(0)}/100</b><br><span class="small">Hazard ${sc.hazard.toFixed(1)} + scope ${sc.scope.toFixed(1)} + assistance ${sc.assistance.toFixed(1)} + exposure ${sc.exposure.toFixed(1)} + vulnerability ${sc.vulnerability.toFixed(1)}</span><br>`:""}<br><b>Newest distinct declarations</b><ul>${newest}</ul><span class="small">Representative state marker, not incident location. Population is context, not affected population.</span>`}
-      function setMarkerState(s){const pos=STATE_POS[s.state],radius=clamp(7,24,6+3.1*Math.log2(s.areas.size+1)),style={radius,color:color(s.maxType),weight:2,fillColor:color(s.maxType),fillOpacity:.55};let m=S.layers.get(s.state);if(!m){m=L.circleMarker(pos,style).bindPopup(()=>popup(S.states.get(s.state)||s)).addTo(markerLayer);S.layers.set(s.state,m)}else{m.setLatLng(pos);m.setRadius(radius);m.setStyle(style)}const sc=score(s);let h=S.halos.get(s.state);if(!sc){if(h){haloLayer.removeLayer(h);S.halos.delete(s.state)}return null}const hs={radius:radius+6,color:"#ffffff00",weight:0,fillColor:sc.total>=70?"#ff5959":sc.total>=45?"#ff8b4c":"#59a7ff",fillOpacity:.08+.18*sc.total/100};if(!h){h=L.circleMarker(pos,hs).bindPopup(()=>popup(S.states.get(s.state)||s)).addTo(haloLayer);S.halos.set(s.state,h)}else{h.setLatLng(pos);h.setRadius(hs.radius);h.setStyle(hs)}return sc.total}
-      async function render({fit=false}={}){const ranked=[],keep=new Set();let processed=0,lastYield=performance.now();for(const s of S.states.values()){keep.add(s.state);const total=setMarkerState(s);if(total!==null)ranked.push({s,score:total});if(++processed%8===0||performance.now()-lastYield>12){await yieldUI();lastYield=performance.now()}}for(const[st,l]of[...S.layers])if(!keep.has(st)){markerLayer.removeLayer(l);S.layers.delete(st)}for(const[st,l]of[...S.halos])if(!keep.has(st)){haloLayer.removeLayer(l);S.halos.delete(st)}ranked.sort((a,b)=>b.score-a.score);renderRank(ranked.slice(0,15));if(fit&&S.states.size)map.fitBounds([[22,-128],[50,-65]],{padding:[18,18]})}
-      function renderRank(rows){const b=$("rankBody");if(!rows.length){b.innerHTML='<tr><td colspan="4" class="small">CDC context is loading, unavailable, or no recent declarations were returned.</td></tr>';return}b.innerHTML=rows.map((r,i)=>{const s=r.s,incident=[...s.incidents.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0]||"n/a";return`<tr data-state="${esc(s.state)}"><td>${i+1}</td><td><b>${esc(s.state)}</b></td><td>${esc(incident)}<br><span class="small">${s.areas.size} areas · ${s.disasters.size} disasters</span></td><td><b>${r.score.toFixed(0)}</b></td></tr>`}).join("");b.querySelectorAll("tr[data-state]").forEach(tr=>{tr.onclick=()=>{const st=tr.dataset.state,l=S.layers.get(st),p=STATE_POS[st];if(!l||!p)return;map.closePopup();if(!map.hasLayer(markerLayer))markerLayer.addTo(map);let opened=false;const open=()=>{if(opened)return;opened=true;try{l.openPopup()}catch{}};map.once("moveend",open);map.flyTo(p,6,{duration:.65});setTimeout(open,900)}})}
-      function cdcURL(){const stats=[{statisticType:"sum",onStatisticField:"E_TOTPOP",outStatisticFieldName:"POP"},{statisticType:"avg",onStatisticField:"RPL_THEMES",outStatisticFieldName:"SVI"}];return CDC+"?"+new URLSearchParams({where:"E_TOTPOP >= 0 AND RPL_THEMES >= 0",outStatistics:JSON.stringify(stats),groupByFieldsForStatistics:"ST_ABBR",orderByFields:"ST_ABBR",returnGeometry:"false",f:"json"})}
-      const cdcStateKey=st=>`mc-cdc-state-context-2022-v${CDC_CACHE_VERSION}:${st}`,CDC_MANIFEST=`mc-cdc-state-context-2022-v${CDC_CACHE_VERSION}:manifest`;
-      function restoreCDCFromCache(){const manifest=readCache(CDC_MANIFEST,CDC_CACHE_VERSION,CDC_CACHE_TTL);if(!Array.isArray(manifest)||!manifest.length)return false;const next=new Map();for(const st0 of manifest){const st=String(st0||"").toUpperCase(),v=readCache(cdcStateKey(st),CDC_CACHE_VERSION,CDC_CACHE_TTL),pop=finite(v?.pop),svi=finite(v?.svi);if(!/^[A-Z]{2}$/.test(st)||pop===null||pop<0||svi===null||svi<0||svi>1)return false;next.set(st,{pop,svi})}if(!next.size)return false;S.cdc=next;health("cdcStatus","Cached",`${next.size} state aggregates · 15-day TTL`);return true}
-      function cacheCDCStates(next){let ok=true;const states=[];for(const[state,v]of next){states.push(state);ok=writeCache(cdcStateKey(state),CDC_CACHE_VERSION,{pop:v.pop,svi:v.svi})&&ok}ok=writeCache(CDC_MANIFEST,CDC_CACHE_VERSION,states)&&ok;return ok}
-      async function loadCDC(){if(S.cdc.size){await render();return}health("cdcStatus","Loading");try{const j=await fetchJSON(cdcURL(),{retries:2,statusId:"cdcStatus"}),next=new Map();for(const f of j?.features||[]){const a=f.attributes||{},st=String(a.ST_ABBR||"").toUpperCase(),pop=finite(a.POP),svi=finite(a.SVI);if(/^[A-Z]{2}$/.test(st)&&pop!==null&&pop>=0&&svi!==null&&svi>=0&&svi<=1)next.set(st,{pop,svi})}if(!next.size)throw new Error("no valid state aggregates");S.cdc=next;health("cdcStatus","Live",`${next.size} state aggregates · SVI 2022`);cacheCDCStates(next);$("progress").textContent=`Live · ${S.states.size} FEMA states/territories · ${next.size} CDC aggregates`;await render()}catch{health("cdcStatus","Unavailable","FEMA still usable");$("progress").textContent="FEMA usable · CDC context unavailable; derived ranking hidden";await render()}}
-      function ensureCDC(){if(S.cdc.size)return Promise.resolve();if(!S.cdcPromise)S.cdcPromise=loadCDC().finally(()=>{S.cdcPromise=null});return S.cdcPromise}
-      function serializeFemaCache(){return S.fema.map(r=>({id:r.id,disasterNumber:r.disasterNumber,state:r.state,type:r.type,incidentType:r.incidentType,title:r.title,area:r.area,declarationDate:r.declarationDate,ia:r.ia,pa:r.pa,hm:r.hm}))}
-      function restoreFemaFromCache(){const days=clamp(30,365,finite($("windowDays").value)||120),data=readCache(`mc-map14-fema-${days}`,FEMA_CACHE_VERSION,FEMA_CACHE_TTL);if(!Array.isArray(data)||!data.length)return false;const cutoff=Date.now()-days*86400000,normalized=data.filter(r=>/^[A-Z]{2}$/.test(String(r?.state||""))&&Number.isFinite(r?.declarationDate)&&r.declarationDate>=cutoff);if(!normalized.length)return false;S.fema=normalized;aggregate();S.lastFema=0;health("femaStatus","Cached",`${normalized.length} rows`);$("progress").textContent="Cached primary signal rendered; revalidating OpenFEMA…";render({fit:true});return true}
-      async function fetchFemaPages(total,gen){const bounded=Math.min(total,MAX_RECORDS),skips=[];for(let skip=PAGE;skip<bounded;skip+=PAGE)skips.push(skip);const out=new Array(skips.length),failed=[];let next=0;async function worker(){while(next<skips.length){const i=next++,skip=skips[i];if(gen!==S.generation)return;try{const j=await fetchJSON(femaURL(skip)),raw=Array.isArray(j?.DisasterDeclarationsSummaries)?j.DisasterDeclarationsSummaries:[];out[i]=raw.map(normalize).filter(Boolean)}catch(e){failed.push(i+2);out[i]=[]}$("progress").textContent=`Loading FEMA page ${i+2}/${skips.length+1}${failed.length?` · partial failures: ${failed.join(",")}`:""}…`;await yieldUI()}}await Promise.all(Array.from({length:Math.min(3,Math.max(1,skips.length))},worker));return{rows:out.flat(),failed}}
-      async function loadFema({fit=false}={}){if(S.busy)return;const gen=++S.generation;S.busy=true;health("femaStatus","Loading");$("progress").textContent="Loading primary signal…";try{const first=await fetchJSON(femaURL(0));if(gen!==S.generation)return;const raw=Array.isArray(first?.DisasterDeclarationsSummaries)?first.DisasterDeclarationsSummaries:[],pageOne=raw.map(normalize).filter(Boolean),total=Math.max(pageOne.length,finite(first?.metadata?.count)??pageOne.length);S.fema=pageOne;aggregate();await render({fit});health("femaStatus","Live",`${pageOne.length}${total>pageOne.length?` of ${total}`:" rows"}`);$("progress").textContent=total>PAGE?"Primary signal rendered; loading remaining FEMA pages…":"Primary signal rendered; loading community context…";void ensureCDC();let all=pageOne,failed=[];if(total>PAGE){const rest=await fetchFemaPages(total,gen);if(gen!==S.generation)return;all=pageOne.concat(rest.rows).slice(0,MAX_RECORDS);failed=rest.failed}S.fema=all;aggregate();await render();S.lastFema=Date.now();const truncated=total>MAX_RECORDS;health("femaStatus","Live",`${all.length}${truncated?` of ${total}, cap ${MAX_RECORDS}`:" rows"}${failed.length?` · ${failed.length} later page${failed.length===1?"":"s"} unavailable`:""}`);$("progress").textContent=failed.length?`Primary FEMA data retained; ${failed.length} later page${failed.length===1?"":"s"} unavailable.`:truncated?`Showing newest ${all.length} of ${total} filtered FEMA rows; cap disclosed.`:`Live · ${S.states.size} states/territories with recent declarations`;const days=clamp(30,365,finite($("windowDays").value)||120);writeCache(`mc-map14-fema-${days}`,FEMA_CACHE_VERSION,serializeFemaCache())}catch(e){if(gen===S.generation){health("femaStatus","Unavailable",e?.name==="AbortError"?"timeout":"request failed");$("progress").textContent=S.fema.length?"OpenFEMA unavailable; cached or previously rendered markers retained.":"OpenFEMA unavailable; no primary markers available."}}finally{if(gen===S.generation)S.busy=false}}
-      async function periodic(){if(document.hidden||!navigator.onLine||S.busy||Date.now()-S.lastFema<20*60*1000)return;await loadFema()}
-      $("refresh").onclick=()=>loadFema();$("windowDays").onchange=()=>{S.generation++;S.busy=false;S.fema=[];S.states=new Map();for(const l of S.layers.values())markerLayer.removeLayer(l);for(const l of S.halos.values())haloLayer.removeLayer(l);S.layers.clear();S.halos.clear();const restored=restoreFemaFromCache();loadFema({fit:!restored})};document.addEventListener("visibilitychange",()=>{if(!document.hidden)periodic()});window.addEventListener("online",periodic);window.addEventListener("resize",window.MCMap.debounce(()=>map.invalidateSize(false),150));setInterval(()=>{if(!document.hidden)periodic()},60*1000);
-      const cdcCached=restoreCDCFromCache(),femaCached=restoreFemaFromCache();if(!cdcCached)void ensureCDC();loadFema({fit:!femaCached});
+      const $ = (id) => document.getElementById(id),
+        FEMA = "https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries",
+        CDC =
+          "https://onemap.cdc.gov/onemapservices/rest/services/SVI/CDC_ATSDR_Social_Vulnerability_Index_2022_USA/FeatureServer/1/query";
+      const PAGE = 1000,
+        MAX_RECORDS = 4000,
+        FEMA_CACHE_VERSION = 2,
+        CDC_CACHE_VERSION = 2,
+        FEMA_CACHE_TTL = 20 * 60 * 1000,
+        CDC_CACHE_TTL = 15 * 24 * 60 * 60 * 1000,
+        LOCAL_CACHE_LIMIT = 220 * 1024,
+        RETRYABLE = new Set([429, 502, 503, 504]),
+        TYPE_POINTS = { DR: 30, EM: 22, FM: 14, FS: 10 };
+      const STATE_POS = {
+        AL: [32.81, -86.79],
+        AK: [61.37, -152.4],
+        AZ: [33.73, -111.43],
+        AR: [34.97, -92.37],
+        CA: [36.12, -119.68],
+        CO: [39.06, -105.31],
+        CT: [41.6, -72.76],
+        DE: [39.32, -75.51],
+        DC: [38.9, -77.03],
+        FL: [27.77, -81.69],
+        GA: [33.04, -83.64],
+        HI: [21.09, -157.5],
+        ID: [44.24, -114.48],
+        IL: [40.35, -88.99],
+        IN: [39.85, -86.26],
+        IA: [42.01, -93.21],
+        KS: [38.53, -96.73],
+        KY: [37.67, -84.67],
+        LA: [31.17, -91.87],
+        ME: [44.69, -69.38],
+        MD: [39.06, -76.8],
+        MA: [42.23, -71.53],
+        MI: [43.33, -84.54],
+        MN: [45.69, -93.9],
+        MS: [32.74, -89.68],
+        MO: [38.46, -92.29],
+        MT: [46.92, -110.45],
+        NE: [41.13, -98.27],
+        NV: [38.31, -117.06],
+        NH: [43.45, -71.56],
+        NJ: [40.3, -74.52],
+        NM: [34.84, -106.25],
+        NY: [42.17, -74.95],
+        NC: [35.63, -79.81],
+        ND: [47.53, -99.78],
+        OH: [40.39, -82.76],
+        OK: [35.57, -96.93],
+        OR: [44.57, -122.07],
+        PA: [40.59, -77.21],
+        RI: [41.68, -71.51],
+        SC: [33.86, -80.95],
+        SD: [44.3, -99.44],
+        TN: [35.75, -86.69],
+        TX: [31.05, -97.56],
+        UT: [40.15, -111.86],
+        VT: [44.05, -72.71],
+        VA: [37.77, -78.17],
+        WA: [47.4, -121.49],
+        WV: [38.49, -80.95],
+        WI: [44.27, -89.62],
+        WY: [42.76, -107.3],
+        PR: [18.22, -66.59],
+        VI: [18.34, -64.9],
+        GU: [13.44, 144.79],
+        MP: [15.1, 145.67],
+        AS: [-14.27, -170.13],
+      };
+      const map = L.map("map", {
+        preferCanvas: true,
+        minZoom: 2,
+        worldCopyJump: true,
+      }).setView([38.5, -97], 4);
+      L.tileLayer(
+        "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
+        {
+          maxZoom: 16,
+          attribution: "USGS The National Map",
+          updateWhenZooming: false,
+          updateWhenIdle: true,
+          keepBuffer: 1,
+        },
+      ).addTo(map);
+      const markerLayer = L.layerGroup().addTo(map),
+        haloLayer = L.layerGroup().addTo(map);
+      const S = {
+        generation: 0,
+        busy: false,
+        fema: [],
+        states: new Map(),
+        cdc: new Map(),
+        layers: new Map(),
+        halos: new Map(),
+        lastFema: 0,
+        cdcPromise: null,
+      };
+      const esc = (s) =>
+          String(s ?? "").replace(
+            /[&<>"']/g,
+            (c) =>
+              ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;",
+              })[c],
+          ),
+        clamp = (a, b, x) => Math.max(a, Math.min(b, x)),
+        finite = (x) => {
+          const n = Number(x);
+          return Number.isFinite(n) ? n : null;
+        },
+        iso = (x) => {
+          const t = Date.parse(x);
+          return Number.isFinite(t) ? t : null;
+        },
+        isBool = (x) => x === true || x === "true" || x === 1 || x === "1",
+        fmt = (t) => (t ? new Date(t).toLocaleDateString() : "n/a");
+      async function yieldUI() {
+        if (globalThis.scheduler?.yield) await globalThis.scheduler.yield();
+        else await new Promise((r) => setTimeout(r, 0));
+      }
+      function safeLocalGet(key) {
+        try {
+          return localStorage.getItem(key);
+        } catch {
+          return null;
+        }
+      }
+      function safeLocalSet(key, value, maxBytes = LOCAL_CACHE_LIMIT) {
+        try {
+          const text = String(value);
+          if (text.length * 2 > maxBytes) return false;
+          return window.MCMap.safeLocalSet(key, text);
+        } catch {
+          return false;
+        }
+      }
+      function readCache(key, version, ttl) {
+        const raw = safeLocalGet(key);
+        if (!raw) return null;
+        try {
+          const p = JSON.parse(raw);
+          if (
+            p?.version !== version ||
+            !Number.isFinite(p?.timestamp) ||
+            Date.now() - p.timestamp > ttl
+          )
+            return null;
+          return p.data ?? null;
+        } catch {
+          return null;
+        }
+      }
+      function writeCache(key, version, data) {
+        return safeLocalSet(
+          key,
+          JSON.stringify({ version, timestamp: Date.now(), data }),
+        );
+      }
+      function health(id, state, detail = "") {
+        const e = $(id);
+        e.textContent = state + (detail ? " · " + detail : "");
+        e.className =
+          "health " +
+          ({
+            Live: "live",
+            Cached: "cached",
+            Loading: "loading",
+            Retrying: "loading",
+            Unavailable: "error",
+          }[state] || "");
+      }
+      function normalize(r) {
+        const n = finite(r?.disasterNumber),
+          d = iso(r?.declarationDate),
+          st = String(r?.state || "").toUpperCase();
+        if (!n || !d || !/^[A-Z]{2}$/.test(st)) return null;
+        const type = String(r.declarationType || "").toUpperCase(),
+          area = String(r.designatedArea || "Area not specified"),
+          title = String(r.declarationTitle || `Disaster ${n}`);
+        if (!type || !area || !title) return null;
+        return {
+          id: String(
+            r.id || `${n}:${st}:${r.placeCode || r.designatedArea || ""}`,
+          ),
+          disasterNumber: n,
+          state: st,
+          type,
+          incidentType: String(r.incidentType || "Unknown"),
+          title,
+          area,
+          declarationDate: d,
+          ia: isBool(r.iaProgramDeclared) || isBool(r.ihProgramDeclared),
+          pa: isBool(r.paProgramDeclared),
+          hm: isBool(r.hmProgramDeclared),
+        };
+      }
+      async function fetchJSON(
+        url,
+        {
+          timeout = 10000,
+          retries = 1,
+          statusId = url.startsWith(FEMA) ? "femaStatus" : "cdcStatus",
+        } = {},
+      ) {
+        let last;
+        for (let a = 0; a <= retries; a++) {
+          const ctl = new AbortController(),
+            timer = setTimeout(() => ctl.abort(), timeout);
+          try {
+            if (a) {
+              health(statusId, "Retrying", `attempt ${a + 1}/${retries + 1}`);
+              await new Promise((r) => setTimeout(r, 650 * 2 ** (a - 1)));
+            }
+            const res = await fetch(url, {
+              headers: { Accept: "application/json" },
+              signal: ctl.signal,
+            });
+            if (!res.ok) {
+              const e = new Error(`HTTP ${res.status}`);
+              e.status = res.status;
+              throw e;
+            }
+            const j = await res.json();
+            if (j?.error) {
+              const e = new Error(j.error.message || "service error");
+              e.status = 400;
+              throw e;
+            }
+            return j;
+          } catch (e) {
+            last = e;
+            if (a >= retries || (e.status && !RETRYABLE.has(e.status))) throw e;
+          } finally {
+            clearTimeout(timer);
+          }
+        }
+        throw last || new Error("request failed");
+      }
+      function femaURL(skip = 0) {
+        const days = clamp(30, 365, finite($("windowDays").value) || 120),
+          start = new Date(Date.now() - days * 86400000).toISOString(),
+          p = new URLSearchParams({
+            $filter: `declarationDate ge '${start}'`,
+            $orderby: "declarationDate desc",
+            $top: String(PAGE),
+            $skip: String(skip),
+            $inlinecount: "allpages",
+            $select:
+              "disasterNumber,state,declarationDate,declarationType,incidentType,declarationTitle,placeCode,designatedArea,ihProgramDeclared,iaProgramDeclared,paProgramDeclared,hmProgramDeclared,id",
+          });
+        return `${FEMA}?${p}`;
+      }
+      function aggregate() {
+        const states = new Map();
+        for (const r of S.fema) {
+          if (!STATE_POS[r.state]) continue;
+          let s = states.get(r.state);
+          if (!s) {
+            s = {
+              state: r.state,
+              disasters: new Map(),
+              areas: new Set(),
+              newest: 0,
+              maxType: "",
+              ia: false,
+              pa: false,
+              hm: false,
+              incidents: new Map(),
+            };
+            states.set(r.state, s);
+          }
+          s.areas.add(r.area);
+          s.newest = Math.max(s.newest, r.declarationDate);
+          if ((TYPE_POINTS[r.type] || 6) > (TYPE_POINTS[s.maxType] || 0))
+            s.maxType = r.type;
+          s.ia ||= r.ia;
+          s.pa ||= r.pa;
+          s.hm ||= r.hm;
+          s.incidents.set(
+            r.incidentType,
+            (s.incidents.get(r.incidentType) || 0) + 1,
+          );
+          if (!s.disasters.has(r.disasterNumber))
+            s.disasters.set(r.disasterNumber, r);
+        }
+        S.states = states;
+      }
+      function score(s) {
+        const c = S.cdc.get(s.state);
+        if (!c) return null;
+        const days = clamp(30, 365, finite($("windowDays").value) || 120),
+          age = Math.max(0, (Date.now() - s.newest) / 86400000),
+          hazard = Math.min(
+            30,
+            (TYPE_POINTS[s.maxType] || 6) *
+              (0.65 + 0.35 * Math.max(0, 1 - age / days)),
+          ),
+          scope = Math.min(25, 8 * Math.log2(s.areas.size + 1)),
+          assistance = Math.min(
+            15,
+            (s.ia ? 6 : 0) + (s.pa ? 5 : 0) + (s.hm ? 4 : 0),
+          ),
+          exposure = Math.min(15, 2.15 * Math.log10(Math.max(0, c.pop) + 1)),
+          vulnerability = 15 * clamp(0, 1, c.svi);
+        return {
+          total: clamp(
+            0,
+            100,
+            hazard + scope + assistance + exposure + vulnerability,
+          ),
+          hazard,
+          scope,
+          assistance,
+          exposure,
+          vulnerability,
+        };
+      }
+      function color(t) {
+        return t === "DR"
+          ? "#ff5959"
+          : t === "EM"
+            ? "#ff8b4c"
+            : t === "FM"
+              ? "#ffd05a"
+              : "#59a7ff";
+      }
+      function popup(s) {
+        const c = S.cdc.get(s.state),
+          sc = score(s),
+          inc = [...s.incidents.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 4)
+            .map(([k, v]) => `${esc(k)} (${v})`)
+            .join(", "),
+          newest = [...s.disasters.values()]
+            .sort((a, b) => b.declarationDate - a.declarationDate)
+            .slice(0, 5)
+            .map(
+              (r) =>
+                `<li><b>${esc(r.type)}-${r.disasterNumber}</b> ${esc(r.title)} · ${fmt(r.declarationDate)}</li>`,
+            )
+            .join("");
+        return `<b>${esc(s.state)} recent FEMA activity</b><br>${s.disasters.size} distinct disaster${s.disasters.size === 1 ? "" : "s"} · ${s.areas.size} designated area${s.areas.size === 1 ? "" : "s"}<br>Newest: ${fmt(s.newest)} · strongest type: <b>${esc(s.maxType || "n/a")}</b><br>Incident mix: ${inc || "n/a"}<br>Programs seen: ${s.ia ? "IA/IH " : ""}${s.pa ? "PA " : ""}${s.hm ? "HM" : ""}<br>${c ? `Represented population: ${Math.round(c.pop).toLocaleString()} · mean county SVI: ${c.svi.toFixed(2)}<br>` : "Population/SVI context loading…<br>"}${sc ? `<b>Derived attention: ${sc.total.toFixed(0)}/100</b><br><span class="small">Hazard ${sc.hazard.toFixed(1)} + scope ${sc.scope.toFixed(1)} + assistance ${sc.assistance.toFixed(1)} + exposure ${sc.exposure.toFixed(1)} + vulnerability ${sc.vulnerability.toFixed(1)}</span><br>` : ""}<br><b>Newest distinct declarations</b><ul>${newest}</ul><span class="small">Representative state marker, not incident location. Population is context, not affected population.</span>`;
+      }
+      function setMarkerState(s) {
+        const pos = STATE_POS[s.state],
+          radius = clamp(7, 24, 6 + 3.1 * Math.log2(s.areas.size + 1)),
+          style = {
+            radius,
+            color: color(s.maxType),
+            weight: 2,
+            fillColor: color(s.maxType),
+            fillOpacity: 0.55,
+          };
+        let m = S.layers.get(s.state);
+        if (!m) {
+          m = L.circleMarker(pos, style)
+            .bindPopup(() => popup(S.states.get(s.state) || s))
+            .addTo(markerLayer);
+          S.layers.set(s.state, m);
+        } else {
+          m.setLatLng(pos);
+          m.setRadius(radius);
+          m.setStyle(style);
+        }
+        const sc = score(s);
+        let h = S.halos.get(s.state);
+        if (!sc) {
+          if (h) {
+            haloLayer.removeLayer(h);
+            S.halos.delete(s.state);
+          }
+          return null;
+        }
+        const hs = {
+          radius: radius + 6,
+          color: "#ffffff00",
+          weight: 0,
+          fillColor:
+            sc.total >= 70 ? "#ff5959" : sc.total >= 45 ? "#ff8b4c" : "#59a7ff",
+          fillOpacity: 0.08 + (0.18 * sc.total) / 100,
+        };
+        if (!h) {
+          h = L.circleMarker(pos, hs)
+            .bindPopup(() => popup(S.states.get(s.state) || s))
+            .addTo(haloLayer);
+          S.halos.set(s.state, h);
+        } else {
+          h.setLatLng(pos);
+          h.setRadius(hs.radius);
+          h.setStyle(hs);
+        }
+        return sc.total;
+      }
+      async function render({ fit = false } = {}) {
+        const ranked = [],
+          keep = new Set();
+        let processed = 0,
+          lastYield = performance.now();
+        for (const s of S.states.values()) {
+          keep.add(s.state);
+          const total = setMarkerState(s);
+          if (total !== null) ranked.push({ s, score: total });
+          if (++processed % 8 === 0 || performance.now() - lastYield > 12) {
+            await yieldUI();
+            lastYield = performance.now();
+          }
+        }
+        for (const [st, l] of [...S.layers])
+          if (!keep.has(st)) {
+            markerLayer.removeLayer(l);
+            S.layers.delete(st);
+          }
+        for (const [st, l] of [...S.halos])
+          if (!keep.has(st)) {
+            haloLayer.removeLayer(l);
+            S.halos.delete(st);
+          }
+        ranked.sort((a, b) => b.score - a.score);
+        renderRank(ranked.slice(0, 15));
+        if (fit && S.states.size)
+          map.fitBounds(
+            [
+              [22, -128],
+              [50, -65],
+            ],
+            { padding: [18, 18] },
+          );
+      }
+      function renderRank(rows) {
+        const b = $("rankBody");
+        if (!rows.length) {
+          b.innerHTML =
+            '<tr><td colspan="4" class="small">CDC context is loading, unavailable, or no recent declarations were returned.</td></tr>';
+          return;
+        }
+        b.innerHTML = rows
+          .map((r, i) => {
+            const s = r.s,
+              incident =
+                [...s.incidents.entries()].sort(
+                  (a, b) => b[1] - a[1],
+                )[0]?.[0] || "n/a";
+            return `<tr data-state="${esc(s.state)}"><td>${i + 1}</td><td><b>${esc(s.state)}</b></td><td>${esc(incident)}<br><span class="small">${s.areas.size} areas · ${s.disasters.size} disasters</span></td><td><b>${r.score.toFixed(0)}</b></td></tr>`;
+          })
+          .join("");
+        b.querySelectorAll("tr[data-state]").forEach((tr) => {
+          tr.onclick = () => {
+            const st = tr.dataset.state,
+              l = S.layers.get(st),
+              p = STATE_POS[st];
+            if (!l || !p) return;
+            map.closePopup();
+            if (!map.hasLayer(markerLayer)) markerLayer.addTo(map);
+            let opened = false;
+            const open = () => {
+              if (opened) return;
+              opened = true;
+              try {
+                l.openPopup();
+              } catch {}
+            };
+            map.once("moveend", open);
+            map.flyTo(p, 6, { duration: 0.65 });
+            setTimeout(open, 900);
+          };
+        });
+      }
+      function cdcURL() {
+        const stats = [
+          {
+            statisticType: "sum",
+            onStatisticField: "E_TOTPOP",
+            outStatisticFieldName: "POP",
+          },
+          {
+            statisticType: "avg",
+            onStatisticField: "RPL_THEMES",
+            outStatisticFieldName: "SVI",
+          },
+        ];
+        return (
+          CDC +
+          "?" +
+          new URLSearchParams({
+            where: "E_TOTPOP >= 0 AND RPL_THEMES >= 0",
+            outStatistics: JSON.stringify(stats),
+            groupByFieldsForStatistics: "ST_ABBR",
+            orderByFields: "ST_ABBR",
+            returnGeometry: "false",
+            f: "json",
+          })
+        );
+      }
+      const cdcStateKey = (st) =>
+          `mc-cdc-state-context-2022-v${CDC_CACHE_VERSION}:${st}`,
+        CDC_MANIFEST = `mc-cdc-state-context-2022-v${CDC_CACHE_VERSION}:manifest`;
+      function restoreCDCFromCache() {
+        const manifest = readCache(
+          CDC_MANIFEST,
+          CDC_CACHE_VERSION,
+          CDC_CACHE_TTL,
+        );
+        if (!Array.isArray(manifest) || !manifest.length) return false;
+        const next = new Map();
+        for (const st0 of manifest) {
+          const st = String(st0 || "").toUpperCase(),
+            v = readCache(cdcStateKey(st), CDC_CACHE_VERSION, CDC_CACHE_TTL),
+            pop = finite(v?.pop),
+            svi = finite(v?.svi);
+          if (
+            !/^[A-Z]{2}$/.test(st) ||
+            pop === null ||
+            pop < 0 ||
+            svi === null ||
+            svi < 0 ||
+            svi > 1
+          )
+            return false;
+          next.set(st, { pop, svi });
+        }
+        if (!next.size) return false;
+        S.cdc = next;
+        health(
+          "cdcStatus",
+          "Cached",
+          `${next.size} state aggregates · 15-day TTL`,
+        );
+        return true;
+      }
+      function cacheCDCStates(next) {
+        let ok = true;
+        const states = [];
+        for (const [state, v] of next) {
+          states.push(state);
+          ok =
+            writeCache(cdcStateKey(state), CDC_CACHE_VERSION, {
+              pop: v.pop,
+              svi: v.svi,
+            }) && ok;
+        }
+        ok = writeCache(CDC_MANIFEST, CDC_CACHE_VERSION, states) && ok;
+        return ok;
+      }
+      async function loadCDC() {
+        if (S.cdc.size) {
+          await render();
+          return;
+        }
+        health("cdcStatus", "Loading");
+        try {
+          const j = await fetchJSON(cdcURL(), {
+              retries: 2,
+              statusId: "cdcStatus",
+            }),
+            next = new Map();
+          for (const f of j?.features || []) {
+            const a = f.attributes || {},
+              st = String(a.ST_ABBR || "").toUpperCase(),
+              pop = finite(a.POP),
+              svi = finite(a.SVI);
+            if (
+              /^[A-Z]{2}$/.test(st) &&
+              pop !== null &&
+              pop >= 0 &&
+              svi !== null &&
+              svi >= 0 &&
+              svi <= 1
+            )
+              next.set(st, { pop, svi });
+          }
+          if (!next.size) throw new Error("no valid state aggregates");
+          S.cdc = next;
+          health(
+            "cdcStatus",
+            "Live",
+            `${next.size} state aggregates · SVI 2022`,
+          );
+          cacheCDCStates(next);
+          $("progress").textContent =
+            `Live · ${S.states.size} FEMA states/territories · ${next.size} CDC aggregates`;
+          await render();
+        } catch {
+          health("cdcStatus", "Unavailable", "FEMA still usable");
+          $("progress").textContent =
+            "FEMA usable · CDC context unavailable; derived ranking hidden";
+          await render();
+        }
+      }
+      function ensureCDC() {
+        if (S.cdc.size) return Promise.resolve();
+        if (!S.cdcPromise)
+          S.cdcPromise = loadCDC().finally(() => {
+            S.cdcPromise = null;
+          });
+        return S.cdcPromise;
+      }
+      function serializeFemaCache() {
+        return S.fema.map((r) => ({
+          id: r.id,
+          disasterNumber: r.disasterNumber,
+          state: r.state,
+          type: r.type,
+          incidentType: r.incidentType,
+          title: r.title,
+          area: r.area,
+          declarationDate: r.declarationDate,
+          ia: r.ia,
+          pa: r.pa,
+          hm: r.hm,
+        }));
+      }
+      function restoreFemaFromCache() {
+        const days = clamp(30, 365, finite($("windowDays").value) || 120),
+          data = readCache(
+            `mc-map14-fema-${days}`,
+            FEMA_CACHE_VERSION,
+            FEMA_CACHE_TTL,
+          );
+        if (!Array.isArray(data) || !data.length) return false;
+        const cutoff = Date.now() - days * 86400000,
+          normalized = data.filter(
+            (r) =>
+              /^[A-Z]{2}$/.test(String(r?.state || "")) &&
+              Number.isFinite(r?.declarationDate) &&
+              r.declarationDate >= cutoff,
+          );
+        if (!normalized.length) return false;
+        S.fema = normalized;
+        aggregate();
+        S.lastFema = 0;
+        health("femaStatus", "Cached", `${normalized.length} rows`);
+        $("progress").textContent =
+          "Cached primary signal rendered; revalidating OpenFEMA…";
+        render({ fit: true });
+        return true;
+      }
+      async function fetchFemaPages(total, gen) {
+        const bounded = Math.min(total, MAX_RECORDS),
+          skips = [];
+        for (let skip = PAGE; skip < bounded; skip += PAGE) skips.push(skip);
+        const out = new Array(skips.length),
+          failed = [];
+        let next = 0;
+        async function worker() {
+          while (next < skips.length) {
+            const i = next++,
+              skip = skips[i];
+            if (gen !== S.generation) return;
+            try {
+              const j = await fetchJSON(femaURL(skip)),
+                raw = Array.isArray(j?.DisasterDeclarationsSummaries)
+                  ? j.DisasterDeclarationsSummaries
+                  : [];
+              out[i] = raw.map(normalize).filter(Boolean);
+            } catch (e) {
+              failed.push(i + 2);
+              out[i] = [];
+            }
+            $("progress").textContent =
+              `Loading FEMA page ${i + 2}/${skips.length + 1}${failed.length ? ` · partial failures: ${failed.join(",")}` : ""}…`;
+            await yieldUI();
+          }
+        }
+        await Promise.all(
+          Array.from(
+            { length: Math.min(3, Math.max(1, skips.length)) },
+            worker,
+          ),
+        );
+        return { rows: out.flat(), failed };
+      }
+      async function loadFema({ fit = false } = {}) {
+        if (S.busy) return;
+        const gen = ++S.generation;
+        S.busy = true;
+        health("femaStatus", "Loading");
+        $("progress").textContent = "Loading primary signal…";
+        try {
+          const first = await fetchJSON(femaURL(0));
+          if (gen !== S.generation) return;
+          const raw = Array.isArray(first?.DisasterDeclarationsSummaries)
+              ? first.DisasterDeclarationsSummaries
+              : [],
+            pageOne = raw.map(normalize).filter(Boolean),
+            total = Math.max(
+              pageOne.length,
+              finite(first?.metadata?.count) ?? pageOne.length,
+            );
+          S.fema = pageOne;
+          aggregate();
+          await render({ fit });
+          health(
+            "femaStatus",
+            "Live",
+            `${pageOne.length}${total > pageOne.length ? ` of ${total}` : " rows"}`,
+          );
+          $("progress").textContent =
+            total > PAGE
+              ? "Primary signal rendered; loading remaining FEMA pages…"
+              : "Primary signal rendered; loading community context…";
+          void ensureCDC();
+          let all = pageOne,
+            failed = [];
+          if (total > PAGE) {
+            const rest = await fetchFemaPages(total, gen);
+            if (gen !== S.generation) return;
+            all = pageOne.concat(rest.rows).slice(0, MAX_RECORDS);
+            failed = rest.failed;
+          }
+          S.fema = all;
+          aggregate();
+          await render();
+          S.lastFema = Date.now();
+          const truncated = total > MAX_RECORDS;
+          health(
+            "femaStatus",
+            "Live",
+            `${all.length}${truncated ? ` of ${total}, cap ${MAX_RECORDS}` : " rows"}${failed.length ? ` · ${failed.length} later page${failed.length === 1 ? "" : "s"} unavailable` : ""}`,
+          );
+          $("progress").textContent = failed.length
+            ? `Primary FEMA data retained; ${failed.length} later page${failed.length === 1 ? "" : "s"} unavailable.`
+            : truncated
+              ? `Showing newest ${all.length} of ${total} filtered FEMA rows; cap disclosed.`
+              : `Live · ${S.states.size} states/territories with recent declarations`;
+          const days = clamp(30, 365, finite($("windowDays").value) || 120);
+          writeCache(
+            `mc-map14-fema-${days}`,
+            FEMA_CACHE_VERSION,
+            serializeFemaCache(),
+          );
+        } catch (e) {
+          if (gen === S.generation) {
+            health(
+              "femaStatus",
+              "Unavailable",
+              e?.name === "AbortError" ? "timeout" : "request failed",
+            );
+            $("progress").textContent = S.fema.length
+              ? "OpenFEMA unavailable; cached or previously rendered markers retained."
+              : "OpenFEMA unavailable; no primary markers available.";
+          }
+        } finally {
+          if (gen === S.generation) S.busy = false;
+        }
+      }
+      async function periodic() {
+        if (
+          document.hidden ||
+          !navigator.onLine ||
+          S.busy ||
+          Date.now() - S.lastFema < 20 * 60 * 1000
+        )
+          return;
+        await loadFema();
+      }
+      $("refresh").onclick = () => loadFema();
+      $("windowDays").onchange = () => {
+        S.generation++;
+        S.busy = false;
+        S.fema = [];
+        S.states = new Map();
+        for (const l of S.layers.values()) markerLayer.removeLayer(l);
+        for (const l of S.halos.values()) haloLayer.removeLayer(l);
+        S.layers.clear();
+        S.halos.clear();
+        const restored = restoreFemaFromCache();
+        loadFema({ fit: !restored });
+      };
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) periodic();
+      });
+      window.addEventListener("online", periodic);
+      window.addEventListener(
+        "resize",
+        window.MCMap.debounce(() => map.invalidateSize(false), 150),
+      );
+      setInterval(() => {
+        if (!document.hidden) periodic();
+      }, 60 * 1000);
+      const cdcCached = restoreCDCFromCache(),
+        femaCached = restoreFemaFromCache();
+      if (!cdcCached) void ensureCDC();
+      loadFema({ fit: !femaCached });
     </script>
   </body>
 </html>
