@@ -1444,7 +1444,10 @@
         if (!document.hidden) map.invalidateSize(false);
       });
       window.addEventListener("online", () => loadRegion());
-      window.addEventListener("resize", () => map.invalidateSize(false));
+      window.addEventListener(
+        "resize",
+        window.MCMap.debounce(() => map.invalidateSize(false), 150),
+      );
     </script>
   </body>
 </html>
