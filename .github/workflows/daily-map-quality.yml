@@ -5,7 +5,6 @@ on:
   push:
     branches: [main]
     paths:
-      - 'daily-maps/*.html'
       - 'scripts/standardize_daily_maps.py'
       - 'scripts/apply_browser_first_standard.py'
       - '.github/workflows/daily-map-quality.yml'
