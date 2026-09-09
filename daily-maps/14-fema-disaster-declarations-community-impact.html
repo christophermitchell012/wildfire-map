@@ -390,7 +390,6 @@
             input instanceof Request ? input : new Request(input, init);
           const method = (req.method || "GET").toUpperCase();
           if (method !== "GET") return nativeFetch(input, init);
-          // Caller-supplied AbortSignal owns timeout/retry. Do not nest another layer.
           if (init?.signal) {
             try {
               const r = await nativeFetch(input, init);
@@ -432,7 +431,7 @@
                     once: true,
                   });
               }
-              const timer = setTimeout(() => ctl.abort(), 10000); // browser-first default; legacy timeout marker 25000 is superseded;
+              const timer = setTimeout(() => ctl.abort(), 10000);
               try {
                 if (attempt) {
                   setState(url, "Retrying", `attempt ${attempt + 1}/2`);
@@ -511,7 +510,6 @@
             timer = setTimeout(() => fn(...args), wait);
           };
         }
-
         async function openPopup(layer, map, latlng, zoom = 8) {
           if (!layer || !map) return;
           map.closePopup();
@@ -729,11 +727,11 @@
               href="https://www.fema.gov/about/openfema/disaster-declarations-summaries"
               target="_blank"
               rel="noopener"
-              >OpenFEMA Disaster Declarations Summaries v1</a
+              >OpenFEMA Disaster Declarations Summaries v2</a
             >: official declarations, incident/declaration types, designated
             areas, assistance flags, dates, and refresh timestamps. API:
             <code
-              >https://www.fema.gov/api/open/v1/DisasterDeclarationsSummaries</code
+              >https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries</code
             >.<br /><br /><a
               href="https://onemap.cdc.gov/onemapservices/rest/services/SVI/CDC_ATSDR_Social_Vulnerability_Index_2022_USA/FeatureServer/1"
               target="_blank"
@@ -759,7 +757,7 @@
       "use strict";
       const $ = (id) => document.getElementById(id);
       const FEMA =
-        "https://www.fema.gov/api/open/v1/DisasterDeclarationsSummaries";
+        "https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries";
       const CDC =
         "https://onemap.cdc.gov/onemapservices/rest/services/SVI/CDC_ATSDR_Social_Vulnerability_Index_2022_USA/FeatureServer/1/query";
       const PAGE = 1000,
@@ -772,634 +770,81 @@
       const RETRYABLE = new Set([429, 502, 503, 504]);
       const TYPE_POINTS = { DR: 30, EM: 22, FM: 14, FS: 10 };
       const STATE_POS = {
-        AL: [32.81, -86.79],
-        AK: [61.37, -152.4],
-        AZ: [33.73, -111.43],
-        AR: [34.97, -92.37],
-        CA: [36.12, -119.68],
-        CO: [39.06, -105.31],
-        CT: [41.6, -72.76],
-        DE: [39.32, -75.51],
-        DC: [38.9, -77.03],
-        FL: [27.77, -81.69],
-        GA: [33.04, -83.64],
-        HI: [21.09, -157.5],
-        ID: [44.24, -114.48],
-        IL: [40.35, -88.99],
-        IN: [39.85, -86.26],
-        IA: [42.01, -93.21],
-        KS: [38.53, -96.73],
-        KY: [37.67, -84.67],
-        LA: [31.17, -91.87],
-        ME: [44.69, -69.38],
-        MD: [39.06, -76.8],
-        MA: [42.23, -71.53],
-        MI: [43.33, -84.54],
-        MN: [45.69, -93.9],
-        MS: [32.74, -89.68],
-        MO: [38.46, -92.29],
-        MT: [46.92, -110.45],
-        NE: [41.13, -98.27],
-        NV: [38.31, -117.06],
-        NH: [43.45, -71.56],
-        NJ: [40.3, -74.52],
-        NM: [34.84, -106.25],
-        NY: [42.17, -74.95],
-        NC: [35.63, -79.81],
-        ND: [47.53, -99.78],
-        OH: [40.39, -82.76],
-        OK: [35.57, -96.93],
-        OR: [44.57, -122.07],
-        PA: [40.59, -77.21],
-        RI: [41.68, -71.51],
-        SC: [33.86, -80.95],
-        SD: [44.3, -99.44],
-        TN: [35.75, -86.69],
-        TX: [31.05, -97.56],
-        UT: [40.15, -111.86],
-        VT: [44.05, -72.71],
-        VA: [37.77, -78.17],
-        WA: [47.4, -121.49],
-        WV: [38.49, -80.95],
-        WI: [44.27, -89.62],
-        WY: [42.76, -107.3],
-        PR: [18.22, -66.59],
-        VI: [18.34, -64.9],
-        GU: [13.44, 144.79],
-        MP: [15.1, 145.67],
-        AS: [-14.27, -170.13],
+        AL: [32.81, -86.79], AK: [61.37, -152.4], AZ: [33.73, -111.43], AR: [34.97, -92.37], CA: [36.12, -119.68], CO: [39.06, -105.31], CT: [41.6, -72.76], DE: [39.32, -75.51], DC: [38.9, -77.03], FL: [27.77, -81.69], GA: [33.04, -83.64], HI: [21.09, -157.5], ID: [44.24, -114.48], IL: [40.35, -88.99], IN: [39.85, -86.26], IA: [42.01, -93.21], KS: [38.53, -96.73], KY: [37.67, -84.67], LA: [31.17, -91.87], ME: [44.69, -69.38], MD: [39.06, -76.8], MA: [42.23, -71.53], MI: [43.33, -84.54], MN: [45.69, -93.9], MS: [32.74, -89.68], MO: [38.46, -92.29], MT: [46.92, -110.45], NE: [41.13, -98.27], NV: [38.31, -117.06], NH: [43.45, -71.56], NJ: [40.3, -74.52], NM: [34.84, -106.25], NY: [42.17, -74.95], NC: [35.63, -79.81], ND: [47.53, -99.78], OH: [40.39, -82.76], OK: [35.57, -96.93], OR: [44.57, -122.07], PA: [40.59, -77.21], RI: [41.68, -71.51], SC: [33.86, -80.95], SD: [44.3, -99.44], TN: [35.75, -86.69], TX: [31.05, -97.56], UT: [40.15, -111.86], VT: [44.05, -72.71], VA: [37.77, -78.17], WA: [47.4, -121.49], WV: [38.49, -80.95], WI: [44.27, -89.62], WY: [42.76, -107.3], PR: [18.22, -66.59], VI: [18.34, -64.9], GU: [13.44, 144.79], MP: [15.1, 145.67], AS: [-14.27, -170.13],
       };
-      const map = L.map("map", {
-        preferCanvas: true,
-        minZoom: 2,
-        worldCopyJump: true,
-      }).setView([38.5, -97], 4);
-      L.tileLayer(
-        "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
-        {
-          maxZoom: 16,
-          attribution: "USGS The National Map",
-          updateWhenZooming: false,
-          updateWhenIdle: true,
-          keepBuffer: 1,
-        },
-      ).addTo(map);
-      const markerLayer = L.layerGroup().addTo(map),
-        haloLayer = L.layerGroup().addTo(map);
-      const S = {
-        generation: 0,
-        busy: false,
-        fema: [],
-        states: new Map(),
-        cdc: new Map(),
-        layers: new Map(),
-        halos: new Map(),
-        lastFema: 0,
-      };
-      const esc = (s) =>
-        String(s ?? "").replace(
-          /[&<>"']/g,
-          (c) =>
-            ({
-              "&": "&amp;",
-              "<": "&lt;",
-              ">": "&gt;",
-              '"': "&quot;",
-              "'": "&#39;",
-            })[c],
-        );
+      const map = L.map("map", { preferCanvas: true, minZoom: 2, worldCopyJump: true }).setView([38.5, -97], 4);
+      L.tileLayer("https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}", { maxZoom: 16, attribution: "USGS The National Map", updateWhenZooming: false, updateWhenIdle: true, keepBuffer: 1 }).addTo(map);
+      const markerLayer = L.layerGroup().addTo(map), haloLayer = L.layerGroup().addTo(map);
+      const S = { generation: 0, busy: false, fema: [], states: new Map(), cdc: new Map(), layers: new Map(), halos: new Map(), lastFema: 0 };
+      const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
       const clamp = (a, b, x) => Math.max(a, Math.min(b, x));
-      const finite = (x) => {
-        const n = Number(x);
-        return Number.isFinite(n) ? n : null;
-      };
-      const iso = (x) => {
-        const t = Date.parse(x);
-        return Number.isFinite(t) ? t : null;
-      };
+      const finite = (x) => { const n = Number(x); return Number.isFinite(n) ? n : null; };
+      const iso = (x) => { const t = Date.parse(x); return Number.isFinite(t) ? t : null; };
       const isBool = (x) => x === true || x === "true" || x === 1 || x === "1";
       const fmt = (t) => (t ? new Date(t).toLocaleDateString() : "n/a");
-      async function yieldUI() {
-        if (globalThis.scheduler?.yield) await globalThis.scheduler.yield();
-        else await new Promise((r) => setTimeout(r, 0));
-      }
-      function safeLocalGet(key) {
-        try {
-          return localStorage.getItem(key);
-        } catch {
-          return null;
-        }
-      }
-      function safeLocalSet(key, value, maxBytes = LOCAL_CACHE_LIMIT) {
-        try {
-          const text = String(value);
-          if (text.length * 2 > maxBytes) return false;
-          window.MCMap.safeLocalSet(key, text);
-          return true;
-        } catch {
-          return false;
-        }
-      }
-      function readCache(key, version, ttl) {
-        const raw = safeLocalGet(key);
-        if (!raw) return null;
-        try {
-          const p = JSON.parse(raw);
-          if (
-            p?.version !== version ||
-            !Number.isFinite(p?.timestamp) ||
-            Date.now() - p.timestamp > ttl
-          )
-            return null;
-          return p.data ?? null;
-        } catch {
-          return null;
-        }
-      }
-      function writeCache(key, version, data) {
-        return safeLocalSet(
-          key,
-          JSON.stringify({ version, timestamp: Date.now(), data }),
-        );
-      }
-      function health(id, state, detail = "") {
-        const e = $(id);
-        e.textContent = state + (detail ? " · " + detail : "");
-        e.className =
-          "health " +
-          ({
-            Live: "live",
-            Cached: "cached",
-            Loading: "loading",
-            Retrying: "loading",
-            Unavailable: "error",
-          }[state] || "");
-      }
+      async function yieldUI() { if (globalThis.scheduler?.yield) await globalThis.scheduler.yield(); else await new Promise((r) => setTimeout(r, 0)); }
+      function safeLocalGet(key) { try { return localStorage.getItem(key); } catch { return null; } }
+      function safeLocalSet(key, value, maxBytes = LOCAL_CACHE_LIMIT) { try { const text = String(value); if (text.length * 2 > maxBytes) return false; window.MCMap.safeLocalSet(key, text); return true; } catch { return false; } }
+      function readCache(key, version, ttl) { const raw = safeLocalGet(key); if (!raw) return null; try { const p = JSON.parse(raw); if (p?.version !== version || !Number.isFinite(p?.timestamp) || Date.now() - p.timestamp > ttl) return null; return p.data ?? null; } catch { return null; } }
+      function writeCache(key, version, data) { return safeLocalSet(key, JSON.stringify({ version, timestamp: Date.now(), data })); }
+      function health(id, state, detail = "") { const e = $(id); e.textContent = state + (detail ? " · " + detail : ""); e.className = "health " + ({ Live: "live", Cached: "cached", Loading: "loading", Retrying: "loading", Unavailable: "error" }[state] || ""); }
       function normalize(r) {
-        const n = finite(r?.disasterNumber),
-          d = iso(r?.declarationDate),
-          st = String(r?.state || "").toUpperCase();
+        const n = finite(r?.disasterNumber), d = iso(r?.declarationDate), st = String(r?.state || "").toUpperCase();
         if (!n || !d || !/^[A-Z]{2}$/.test(st)) return null;
         return {
-          id: String(
-            r.id || `${n}:${st}:${r.placeCode || r.declaredCountyArea || ""}`,
-          ),
+          id: String(r.id || `${n}:${st}:${r.placeCode || r.designatedArea || ""}`),
           disasterNumber: n,
           state: st,
-          type: String(r.disasterType || "").toUpperCase(),
+          type: String(r.declarationType || "").toUpperCase(),
           incidentType: String(r.incidentType || "Unknown"),
-          title: String(r.title || `Disaster ${n}`),
-          area: String(r.declaredCountyArea || "Area not specified"),
+          title: String(r.declarationTitle || `Disaster ${n}`),
+          area: String(r.designatedArea || "Area not specified"),
           declarationDate: d,
           ia: isBool(r.iaProgramDeclared) || isBool(r.ihProgramDeclared),
           pa: isBool(r.paProgramDeclared),
           hm: isBool(r.hmProgramDeclared),
         };
       }
-      async function fetchJSON(url, { timeout = 10000, retries = 1 } = {}) {
-        let last;
-        for (let a = 0; a <= retries; a++) {
-          const ctl = new AbortController(),
-            timer = setTimeout(() => ctl.abort(), timeout);
-          try {
-            if (a) {
-              health(
-                url.startsWith(FEMA) ? "femaStatus" : "cdcStatus",
-                "Retrying",
-                `attempt ${a + 1}/${retries + 1}`,
-              );
-              await new Promise((r) => setTimeout(r, 650 * 2 ** (a - 1)));
-            }
-            const res = await fetch(url, {
-              headers: { Accept: "application/json" },
-              signal: ctl.signal,
-            });
-            if (!res.ok) {
-              const e = new Error(`HTTP ${res.status}`);
-              e.status = res.status;
-              throw e;
-            }
-            return await res.json();
-          } catch (e) {
-            last = e;
-            if (a >= retries || (e.status && !RETRYABLE.has(e.status))) throw e;
-          } finally {
-            clearTimeout(timer);
-          }
-        }
-        throw last || new Error("request failed");
-      }
+      async function fetchJSON(url, { timeout = 10000, retries = 1 } = {}) { let last; for (let a = 0; a <= retries; a++) { const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), timeout); try { if (a) { health(url.startsWith(FEMA) ? "femaStatus" : "cdcStatus", "Retrying", `attempt ${a + 1}/${retries + 1}`); await new Promise((r) => setTimeout(r, 650 * 2 ** (a - 1))); } const res = await fetch(url, { headers: { Accept: "application/json" }, signal: ctl.signal }); if (!res.ok) { const e = new Error(`HTTP ${res.status}`); e.status = res.status; throw e; } return await res.json(); } catch (e) { last = e; if (a >= retries || (e.status && !RETRYABLE.has(e.status))) throw e; } finally { clearTimeout(timer); } } throw last || new Error("request failed"); }
       function femaURL(skip = 0) {
-        const days = clamp(30, 365, finite($("windowDays").value) || 120),
-          start = new Date(Date.now() - days * 86400000).toISOString(),
-          p = new URLSearchParams({
-            $filter: `declarationDate ge '${start}'`,
-            $orderby: "declarationDate desc",
-            $top: String(PAGE),
-            $skip: String(skip),
-            $inlinecount: "allpages",
-            $select:
-              "disasterNumber,state,declarationDate,disasterType,incidentType,title,placeCode,declaredCountyArea,ihProgramDeclared,iaProgramDeclared,paProgramDeclared,hmProgramDeclared,id",
-          });
+        const days = clamp(30, 365, finite($("windowDays").value) || 120), start = new Date(Date.now() - days * 86400000).toISOString(), p = new URLSearchParams({ $filter: `declarationDate ge '${start}'`, $orderby: "declarationDate desc", $top: String(PAGE), $skip: String(skip), $inlinecount: "allpages", $select: "disasterNumber,state,declarationDate,declarationType,incidentType,declarationTitle,placeCode,designatedArea,ihProgramDeclared,iaProgramDeclared,paProgramDeclared,hmProgramDeclared,id" });
         return `${FEMA}?${p}`;
       }
-      function aggregate() {
-        const states = new Map();
-        for (const r of S.fema) {
-          if (!STATE_POS[r.state]) continue;
-          let s = states.get(r.state);
-          if (!s) {
-            s = {
-              state: r.state,
-              disasters: new Map(),
-              areas: new Set(),
-              newest: 0,
-              maxType: "",
-              ia: false,
-              pa: false,
-              hm: false,
-              incidents: new Map(),
-            };
-            states.set(r.state, s);
-          }
-          s.areas.add(r.area);
-          s.newest = Math.max(s.newest, r.declarationDate);
-          if ((TYPE_POINTS[r.type] || 6) > (TYPE_POINTS[s.maxType] || 0))
-            s.maxType = r.type;
-          s.ia ||= r.ia;
-          s.pa ||= r.pa;
-          s.hm ||= r.hm;
-          s.incidents.set(
-            r.incidentType,
-            (s.incidents.get(r.incidentType) || 0) + 1,
-          );
-          if (!s.disasters.has(r.disasterNumber))
-            s.disasters.set(r.disasterNumber, r);
-        }
-        S.states = states;
-      }
-      function score(s) {
-        const c = S.cdc.get(s.state);
-        if (!c) return null;
-        const days = clamp(30, 365, finite($("windowDays").value) || 120),
-          age = Math.max(0, (Date.now() - s.newest) / 86400000),
-          hazard = Math.min(
-            30,
-            (TYPE_POINTS[s.maxType] || 6) *
-              (0.65 + 0.35 * Math.max(0, 1 - age / days)),
-          ),
-          scope = Math.min(25, 8 * Math.log2(s.areas.size + 1)),
-          assistance = Math.min(
-            15,
-            (s.ia ? 6 : 0) + (s.pa ? 5 : 0) + (s.hm ? 4 : 0),
-          ),
-          exposure = Math.min(15, 2.15 * Math.log10(Math.max(0, c.pop) + 1)),
-          vulnerability = 15 * clamp(0, 1, c.svi);
-        return {
-          total: clamp(
-            0,
-            100,
-            hazard + scope + assistance + exposure + vulnerability,
-          ),
-          hazard,
-          scope,
-          assistance,
-          exposure,
-          vulnerability,
-        };
-      }
-      function color(t) {
-        return t === "DR"
-          ? "#ff5959"
-          : t === "EM"
-            ? "#ff8b4c"
-            : t === "FM"
-              ? "#ffd05a"
-              : "#59a7ff";
-      }
-      function popup(s) {
-        const c = S.cdc.get(s.state),
-          sc = score(s),
-          inc = [...s.incidents.entries()]
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 4)
-            .map(([k, v]) => `${esc(k)} (${v})`)
-            .join(", "),
-          newest = [...s.disasters.values()]
-            .sort((a, b) => b.declarationDate - a.declarationDate)
-            .slice(0, 5)
-            .map(
-              (r) =>
-                `<li><b>${esc(r.type)}-${r.disasterNumber}</b> ${esc(r.title)} · ${fmt(r.declarationDate)}</li>`,
-            )
-            .join("");
-        return `<b>${esc(s.state)} recent FEMA activity</b><br>${s.disasters.size} distinct disaster${s.disasters.size === 1 ? "" : "s"} · ${s.areas.size} designated area${s.areas.size === 1 ? "" : "s"}<br>Newest: ${fmt(s.newest)} · strongest type: <b>${esc(s.maxType || "n/a")}</b><br>Incident mix: ${inc || "n/a"}<br>Programs seen: ${s.ia ? "IA/IH " : ""}${s.pa ? "PA " : ""}${s.hm ? "HM" : ""}<br>${c ? `Represented population: ${Math.round(c.pop).toLocaleString()} · mean county SVI: ${c.svi.toFixed(2)}<br>` : "Population/SVI context loading…<br>"}${sc ? `<b>Derived attention: ${sc.total.toFixed(0)}/100</b><br><span class="small">Hazard ${sc.hazard.toFixed(1)} + scope ${sc.scope.toFixed(1)} + assistance ${sc.assistance.toFixed(1)} + exposure ${sc.exposure.toFixed(1)} + vulnerability ${sc.vulnerability.toFixed(1)}</span><br>` : ""}<br><b>Newest distinct declarations</b><ul>${newest}</ul><span class="small">Representative state marker, not incident location. Population is context, not affected population.</span>`;
-      }
-      function setMarkerState(s) {
-        const pos = STATE_POS[s.state],
-          radius = clamp(7, 24, 6 + 3.1 * Math.log2(s.areas.size + 1)),
-          style = {
-            radius,
-            color: color(s.maxType),
-            weight: 2,
-            fillColor: color(s.maxType),
-            fillOpacity: 0.55,
-          };
-        let m = S.layers.get(s.state);
-        if (!m) {
-          m = L.circleMarker(pos, style)
-            .bindPopup(() => popup(S.states.get(s.state) || s))
-            .addTo(markerLayer);
-          S.layers.set(s.state, m);
-        } else {
-          m.setLatLng(pos);
-          m.setRadius(radius);
-          m.setStyle(style);
-        }
-        const sc = score(s);
-        let h = S.halos.get(s.state);
-        if (!sc) {
-          if (h) {
-            haloLayer.removeLayer(h);
-            S.halos.delete(s.state);
-          }
-          return null;
-        }
-        const hs = {
-          radius: radius + 6,
-          color: "#ffffff00",
-          weight: 0,
-          fillColor:
-            sc.total >= 70 ? "#ff5959" : sc.total >= 45 ? "#ff8b4c" : "#59a7ff",
-          fillOpacity: 0.08 + (0.18 * sc.total) / 100,
-        };
-        if (!h) {
-          h = L.circleMarker(pos, hs)
-            .bindPopup(() => popup(S.states.get(s.state) || s))
-            .addTo(haloLayer);
-          S.halos.set(s.state, h);
-        } else {
-          h.setLatLng(pos);
-          h.setRadius(hs.radius);
-          h.setStyle(hs);
-        }
-        return sc.total;
-      }
-      async function render({ fit = false } = {}) {
-        const ranked = [],
-          keep = new Set();
-        let processed = 0,
-          lastYield = performance.now();
-        for (const s of S.states.values()) {
-          keep.add(s.state);
-          const total = setMarkerState(s);
-          if (total !== null) ranked.push({ s, score: total });
-          processed++;
-          if (processed % 8 === 0 || performance.now() - lastYield > 12) {
-            await yieldUI();
-            lastYield = performance.now();
-          }
-        }
-        for (const [st, l] of [...S.layers])
-          if (!keep.has(st)) {
-            markerLayer.removeLayer(l);
-            S.layers.delete(st);
-          }
-        for (const [st, l] of [...S.halos])
-          if (!keep.has(st)) {
-            haloLayer.removeLayer(l);
-            S.halos.delete(st);
-          }
-        ranked.sort((a, b) => b.score - a.score);
-        renderRank(ranked.slice(0, 15));
-        if (fit && S.states.size)
-          map.fitBounds(
-            [
-              [22, -128],
-              [50, -65],
-            ],
-            { padding: [18, 18] },
-          );
-      }
-      function renderRank(rows) {
-        const b = $("rankBody");
-        if (!rows.length) {
-          b.innerHTML =
-            '<tr><td colspan="4" class="small">CDC context is loading, unavailable, or no recent declarations were returned.</td></tr>';
-          return;
-        }
-        b.innerHTML = rows
-          .map((r, i) => {
-            const s = r.s,
-              incident =
-                [...s.incidents.entries()].sort(
-                  (a, b) => b[1] - a[1],
-                )[0]?.[0] || "n/a";
-            return `<tr data-state="${esc(s.state)}"><td>${i + 1}</td><td><b>${esc(s.state)}</b></td><td>${esc(incident)}<br><span class="small">${s.areas.size} areas · ${s.disasters.size} disasters</span></td><td><b>${r.score.toFixed(0)}</b></td></tr>`;
-          })
-          .join("");
-        b.querySelectorAll("tr[data-state]").forEach((tr) => {
-          tr.onclick = () => {
-            const st = tr.dataset.state,
-              l = S.layers.get(st),
-              p = STATE_POS[st];
-            if (!l || !p) return;
-            map.closePopup();
-            if (!map.hasLayer(markerLayer)) markerLayer.addTo(map);
-            let opened = false;
-            const open = () => {
-              if (opened) return;
-              opened = true;
-              try {
-                l.openPopup();
-              } catch {}
-            };
-            map.once("moveend", open);
-            map.flyTo(p, 6, { duration: 0.65 });
-            setTimeout(open, 900);
-          };
-        });
-      }
-      function cdcURL() {
-        const stats = [
-          {
-            statisticType: "sum",
-            onStatisticField: "E_TOTPOP",
-            outStatisticFieldName: "POP",
-          },
-          {
-            statisticType: "avg",
-            onStatisticField: "RPL_THEMES",
-            outStatisticFieldName: "SVI",
-          },
-        ];
-        return (
-          CDC +
-          "?" +
-          new URLSearchParams({
-            where: "E_TOTPOP >= 0 AND RPL_THEMES >= 0",
-            outStatistics: JSON.stringify(stats),
-            groupByFieldsForStatistics: "ST_ABBR",
-            orderByFields: "ST_ABBR",
-            returnGeometry: "false",
-            f: "json",
-          })
-        );
-      }
-      function restoreCDCFromCache() {
-        const data = readCache(
-          "mc-map14-cdc-svi-2022",
-          CDC_CACHE_VERSION,
-          CDC_CACHE_TTL,
-        );
-        if (!Array.isArray(data)) return false;
-        const next = new Map();
-        for (const row of data) {
-          const st = String(row?.state || "").toUpperCase(),
-            pop = finite(row?.pop),
-            svi = finite(row?.svi);
-          if (
-            /^[A-Z]{2}$/.test(st) &&
-            pop !== null &&
-            pop >= 0 &&
-            svi !== null &&
-            svi >= 0 &&
-            svi <= 1
-          )
-            next.set(st, { pop, svi });
-        }
-        if (!next.size) return false;
-        S.cdc = next;
-        health(
-          "cdcStatus",
-          "Cached",
-          `${next.size} state aggregates · SVI 2022`,
-        );
-        return true;
-      }
-      async function loadCDC(gen = S.generation) {
-        if (S.cdc.size) {
-          await render();
-          return;
-        }
+      function aggregate() { const states = new Map(); for (const r of S.fema) { if (!STATE_POS[r.state]) continue; let s = states.get(r.state); if (!s) { s = { state: r.state, disasters: new Map(), areas: new Set(), newest: 0, maxType: "", ia: false, pa: false, hm: false, incidents: new Map() }; states.set(r.state, s); } s.areas.add(r.area); s.newest = Math.max(s.newest, r.declarationDate); if ((TYPE_POINTS[r.type] || 6) > (TYPE_POINTS[s.maxType] || 0)) s.maxType = r.type; s.ia ||= r.ia; s.pa ||= r.pa; s.hm ||= r.hm; s.incidents.set(r.incidentType, (s.incidents.get(r.incidentType) || 0) + 1); if (!s.disasters.has(r.disasterNumber)) s.disasters.set(r.disasterNumber, r); } S.states = states; }
+      function score(s) { const c = S.cdc.get(s.state); if (!c) return null; const days = clamp(30, 365, finite($("windowDays").value) || 120), age = Math.max(0, (Date.now() - s.newest) / 86400000), hazard = Math.min(30, (TYPE_POINTS[s.maxType] || 6) * (0.65 + 0.35 * Math.max(0, 1 - age / days))), scope = Math.min(25, 8 * Math.log2(s.areas.size + 1)), assistance = Math.min(15, (s.ia ? 6 : 0) + (s.pa ? 5 : 0) + (s.hm ? 4 : 0)), exposure = Math.min(15, 2.15 * Math.log10(Math.max(0, c.pop) + 1)), vulnerability = 15 * clamp(0, 1, c.svi); return { total: clamp(0, 100, hazard + scope + assistance + exposure + vulnerability), hazard, scope, assistance, exposure, vulnerability }; }
+      function color(t) { return t === "DR" ? "#ff5959" : t === "EM" ? "#ff8b4c" : t === "FM" ? "#ffd05a" : "#59a7ff"; }
+      function popup(s) { const c = S.cdc.get(s.state), sc = score(s), inc = [...s.incidents.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => `${esc(k)} (${v})`).join(", "), newest = [...s.disasters.values()].sort((a, b) => b.declarationDate - a.declarationDate).slice(0, 5).map((r) => `<li><b>${esc(r.type)}-${r.disasterNumber}</b> ${esc(r.title)} · ${fmt(r.declarationDate)}</li>`).join(""); return `<b>${esc(s.state)} recent FEMA activity</b><br>${s.disasters.size} distinct disaster${s.disasters.size === 1 ? "" : "s"} · ${s.areas.size} designated area${s.areas.size === 1 ? "" : "s"}<br>Newest: ${fmt(s.newest)} · strongest type: <b>${esc(s.maxType || "n/a")}</b><br>Incident mix: ${inc || "n/a"}<br>Programs seen: ${s.ia ? "IA/IH " : ""}${s.pa ? "PA " : ""}${s.hm ? "HM" : ""}<br>${c ? `Represented population: ${Math.round(c.pop).toLocaleString()} · mean county SVI: ${c.svi.toFixed(2)}<br>` : "Population/SVI context loading…<br>"}${sc ? `<b>Derived attention: ${sc.total.toFixed(0)}/100</b><br><span class="small">Hazard ${sc.hazard.toFixed(1)} + scope ${sc.scope.toFixed(1)} + assistance ${sc.assistance.toFixed(1)} + exposure ${sc.exposure.toFixed(1)} + vulnerability ${sc.vulnerability.toFixed(1)}</span><br>` : ""}<br><b>Newest distinct declarations</b><ul>${newest}</ul><span class="small">Representative state marker, not incident location. Population is context, not affected population.</span>`; }
+      function setMarkerState(s) { const pos = STATE_POS[s.state], radius = clamp(7, 24, 6 + 3.1 * Math.log2(s.areas.size + 1)), style = { radius, color: color(s.maxType), weight: 2, fillColor: color(s.maxType), fillOpacity: 0.55 }; let m = S.layers.get(s.state); if (!m) { m = L.circleMarker(pos, style).bindPopup(() => popup(S.states.get(s.state) || s)).addTo(markerLayer); S.layers.set(s.state, m); } else { m.setLatLng(pos); m.setRadius(radius); m.setStyle(style); } const sc = score(s); let h = S.halos.get(s.state); if (!sc) { if (h) { haloLayer.removeLayer(h); S.halos.delete(s.state); } return null; } const hs = { radius: radius + 6, color: "#ffffff00", weight: 0, fillColor: sc.total >= 70 ? "#ff5959" : sc.total >= 45 ? "#ff8b4c" : "#59a7ff", fillOpacity: 0.08 + (0.18 * sc.total) / 100 }; if (!h) { h = L.circleMarker(pos, hs).bindPopup(() => popup(S.states.get(s.state) || s)).addTo(haloLayer); S.halos.set(s.state, h); } else { h.setLatLng(pos); h.setRadius(hs.radius); h.setStyle(hs); } return sc.total; }
+      async function render({ fit = false } = {}) { const ranked = [], keep = new Set(); let processed = 0, lastYield = performance.now(); for (const s of S.states.values()) { keep.add(s.state); const total = setMarkerState(s); if (total !== null) ranked.push({ s, score: total }); processed++; if (processed % 8 === 0 || performance.now() - lastYield > 12) { await yieldUI(); lastYield = performance.now(); } } for (const [st, l] of [...S.layers]) if (!keep.has(st)) { markerLayer.removeLayer(l); S.layers.delete(st); } for (const [st, l] of [...S.halos]) if (!keep.has(st)) { haloLayer.removeLayer(l); S.halos.delete(st); } ranked.sort((a, b) => b.score - a.score); renderRank(ranked.slice(0, 15)); if (fit && S.states.size) map.fitBounds([[22, -128], [50, -65]], { padding: [18, 18] }); }
+      function renderRank(rows) { const b = $("rankBody"); if (!rows.length) { b.innerHTML = '<tr><td colspan="4" class="small">CDC context is loading, unavailable, or no recent declarations were returned.</td></tr>'; return; } b.innerHTML = rows.map((r, i) => { const s = r.s, incident = [...s.incidents.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "n/a"; return `<tr data-state="${esc(s.state)}"><td>${i + 1}</td><td><b>${esc(s.state)}</b></td><td>${esc(incident)}<br><span class="small">${s.areas.size} areas · ${s.disasters.size} disasters</span></td><td><b>${r.score.toFixed(0)}</b></td></tr>`; }).join(""); b.querySelectorAll("tr[data-state]").forEach((tr) => { tr.onclick = () => { const st = tr.dataset.state, l = S.layers.get(st), p = STATE_POS[st]; if (!l || !p) return; map.closePopup(); if (!map.hasLayer(markerLayer)) markerLayer.addTo(map); let opened = false; const open = () => { if (opened) return; opened = true; try { l.openPopup(); } catch {} }; map.once("moveend", open); map.flyTo(p, 6, { duration: 0.65 }); setTimeout(open, 900); }; }); }
+      function cdcURL() { const stats = [{ statisticType: "sum", onStatisticField: "E_TOTPOP", outStatisticFieldName: "POP" }, { statisticType: "avg", onStatisticField: "RPL_THEMES", outStatisticFieldName: "SVI" }]; return CDC + "?" + new URLSearchParams({ where: "E_TOTPOP >= 0 AND RPL_THEMES >= 0", outStatistics: JSON.stringify(stats), groupByFieldsForStatistics: "ST_ABBR", orderByFields: "ST_ABBR", returnGeometry: "false", f: "json" }); }
+      function restoreCDCFromCache() { const data = readCache("mc-map14-cdc-svi-2022", CDC_CACHE_VERSION, CDC_CACHE_TTL); if (!Array.isArray(data)) return false; const next = new Map(); for (const row of data) { const st = String(row?.state || "").toUpperCase(), pop = finite(row?.pop), svi = finite(row?.svi); if (/^[A-Z]{2}$/.test(st) && pop !== null && pop >= 0 && svi !== null && svi >= 0 && svi <= 1) next.set(st, { pop, svi }); } if (!next.size) return false; S.cdc = next; health("cdcStatus", "Cached", `${next.size} state aggregates · SVI 2022`); return true; }
+      async function loadCDC() {
+        if (S.cdc.size) { await render(); return; }
         health("cdcStatus", "Loading");
         try {
           const j = await fetchJSON(cdcURL());
-          if (gen !== S.generation) return;
           if (j?.error) throw new Error(j.error.message || "CDC service error");
           const next = new Map();
           for (const f of j?.features || []) {
-            const a = f.attributes || {},
-              st = String(a.ST_ABBR || "").toUpperCase(),
-              pop = finite(a.POP),
-              svi = finite(a.SVI);
-            if (
-              /^[A-Z]{2}$/.test(st) &&
-              pop !== null &&
-              pop >= 0 &&
-              svi !== null &&
-              svi >= 0 &&
-              svi <= 1
-            )
-              next.set(st, { pop, svi });
+            const a = f.attributes || {}, st = String(a.ST_ABBR || "").toUpperCase(), pop = finite(a.POP), svi = finite(a.SVI);
+            if (/^[A-Z]{2}$/.test(st) && pop !== null && pop >= 0 && svi !== null && svi >= 0 && svi <= 1) next.set(st, { pop, svi });
           }
           if (!next.size) throw new Error("no valid state aggregates");
           S.cdc = next;
-          health(
-            "cdcStatus",
-            "Live",
-            `${next.size} state aggregates · SVI 2022`,
-          );
-          writeCache(
-            "mc-map14-cdc-svi-2022",
-            CDC_CACHE_VERSION,
-            [...next.entries()].map(([state, v]) => ({
-              state,
-              pop: v.pop,
-              svi: v.svi,
-            })),
-          );
-          $("progress").textContent =
-            `Live · ${S.states.size} FEMA states/territories · ${next.size} CDC aggregates`;
+          health("cdcStatus", "Live", `${next.size} state aggregates · SVI 2022`);
+          writeCache("mc-map14-cdc-svi-2022", CDC_CACHE_VERSION, [...next.entries()].map(([state, v]) => ({ state, pop: v.pop, svi: v.svi })));
+          $("progress").textContent = `Live · ${S.states.size} FEMA states/territories · ${next.size} CDC aggregates`;
           await render();
         } catch {
-          if (gen === S.generation) {
-            health("cdcStatus", "Unavailable", "FEMA still usable");
-            $("progress").textContent =
-              "FEMA usable · CDC context unavailable; derived ranking hidden";
-            await render();
-          }
+          health("cdcStatus", "Unavailable", "FEMA still usable");
+          $("progress").textContent = "FEMA usable · CDC context unavailable; derived ranking hidden";
+          await render();
         }
       }
-      function serializeFemaCache() {
-        return S.fema.map((r) => ({
-          id: r.id,
-          disasterNumber: r.disasterNumber,
-          state: r.state,
-          type: r.type,
-          incidentType: r.incidentType,
-          title: r.title,
-          area: r.area,
-          declarationDate: r.declarationDate,
-          ia: r.ia,
-          pa: r.pa,
-          hm: r.hm,
-        }));
-      }
-      function restoreFemaFromCache() {
-        const days = clamp(30, 365, finite($("windowDays").value) || 120),
-          data = readCache(
-            `mc-map14-fema-${days}`,
-            FEMA_CACHE_VERSION,
-            FEMA_CACHE_TTL,
-          );
-        if (!Array.isArray(data) || !data.length) return false;
-        const cutoff = Date.now() - days * 86400000,
-          normalized = data.filter(
-            (r) =>
-              /^[A-Z]{2}$/.test(String(r?.state || "")) &&
-              Number.isFinite(r?.declarationDate) &&
-              r.declarationDate >= cutoff,
-          );
-        if (!normalized.length) return false;
-        S.fema = normalized;
-        aggregate();
-        S.lastFema = 0;
-        health("femaStatus", "Cached", `${normalized.length} rows`);
-        $("progress").textContent =
-          "Cached primary signal rendered; revalidating OpenFEMA…";
-        render({ fit: true });
-        return true;
-      }
-      async function fetchFemaPages(total, gen) {
-        const bounded = Math.min(total, MAX_RECORDS),
-          skips = [];
-        for (let skip = PAGE; skip < bounded; skip += PAGE) skips.push(skip);
-        const out = new Array(skips.length);
-        let next = 0;
-        async function worker() {
-          while (next < skips.length) {
-            const i = next++,
-              skip = skips[i];
-            if (gen !== S.generation) return;
-            const j = await fetchJSON(femaURL(skip)),
-              raw = Array.isArray(j?.DisasterDeclarationsSummaries)
-                ? j.DisasterDeclarationsSummaries
-                : [];
-            out[i] = raw.map(normalize).filter(Boolean);
-            $("progress").textContent =
-              `Loading FEMA page ${i + 2}/${skips.length + 1}…`;
-            await yieldUI();
-          }
-        }
-        await Promise.all(
-          Array.from(
-            { length: Math.min(3, Math.max(1, skips.length)) },
-            worker,
-          ),
-        );
-        return out.flat();
-      }
+      function serializeFemaCache() { return S.fema.map((r) => ({ id: r.id, disasterNumber: r.disasterNumber, state: r.state, type: r.type, incidentType: r.incidentType, title: r.title, area: r.area, declarationDate: r.declarationDate, ia: r.ia, pa: r.pa, hm: r.hm })); }
+      function restoreFemaFromCache() { const days = clamp(30, 365, finite($("windowDays").value) || 120), data = readCache(`mc-map14-fema-${days}`, FEMA_CACHE_VERSION, FEMA_CACHE_TTL); if (!Array.isArray(data) || !data.length) return false; const cutoff = Date.now() - days * 86400000, normalized = data.filter((r) => /^[A-Z]{2}$/.test(String(r?.state || "")) && Number.isFinite(r?.declarationDate) && r.declarationDate >= cutoff); if (!normalized.length) return false; S.fema = normalized; aggregate(); S.lastFema = 0; health("femaStatus", "Cached", `${normalized.length} rows`); $("progress").textContent = "Cached primary signal rendered; revalidating OpenFEMA…"; render({ fit: true }); return true; }
+      async function fetchFemaPages(total, gen) { const bounded = Math.min(total, MAX_RECORDS), skips = []; for (let skip = PAGE; skip < bounded; skip += PAGE) skips.push(skip); const out = new Array(skips.length); let next = 0; async function worker() { while (next < skips.length) { const i = next++, skip = skips[i]; if (gen !== S.generation) return; const j = await fetchJSON(femaURL(skip)), raw = Array.isArray(j?.DisasterDeclarationsSummaries) ? j.DisasterDeclarationsSummaries : []; out[i] = raw.map(normalize).filter(Boolean); $("progress").textContent = `Loading FEMA page ${i + 2}/${skips.length + 1}…`; await yieldUI(); } } await Promise.all(Array.from({ length: Math.min(3, Math.max(1, skips.length)) }, worker)); return out.flat(); }
       async function loadFema({ fit = false } = {}) {
         if (S.busy) return;
         const gen = ++S.generation;
@@ -1409,111 +854,42 @@
         try {
           const first = await fetchJSON(femaURL(0));
           if (gen !== S.generation) return;
-          const raw = Array.isArray(first?.DisasterDeclarationsSummaries)
-              ? first.DisasterDeclarationsSummaries
-              : [],
-            pageOne = raw.map(normalize).filter(Boolean),
-            total = Math.max(
-              pageOne.length,
-              finite(first?.metadata?.count) ?? pageOne.length,
-            );
+          const raw = Array.isArray(first?.DisasterDeclarationsSummaries) ? first.DisasterDeclarationsSummaries : [], pageOne = raw.map(normalize).filter(Boolean), total = Math.max(pageOne.length, finite(first?.metadata?.count) ?? pageOne.length);
           S.fema = pageOne;
           aggregate();
           await render({ fit });
-          health(
-            "femaStatus",
-            "Live",
-            `${pageOne.length}${total > pageOne.length ? ` of ${total}` : " rows"}`,
-          );
-          $("progress").textContent =
-            total > PAGE
-              ? "Primary signal rendered; loading remaining FEMA pages…"
-              : "Primary signal rendered; loading community context…";
-          if (!S.cdc.size) loadCDC(gen);
-          else await render();
+          health("femaStatus", "Live", `${pageOne.length}${total > pageOne.length ? ` of ${total}` : " rows"}`);
+          $("progress").textContent = total > PAGE ? "Primary signal rendered; loading remaining FEMA pages…" : "Primary signal rendered; loading community context…";
+          if (!S.cdc.size) loadCDC(); else await render();
           let all = pageOne;
-          if (total > PAGE) {
-            const rest = await fetchFemaPages(total, gen);
-            if (gen !== S.generation) return;
-            all = pageOne.concat(rest).slice(0, MAX_RECORDS);
-          }
+          if (total > PAGE) { const rest = await fetchFemaPages(total, gen); if (gen !== S.generation) return; all = pageOne.concat(rest).slice(0, MAX_RECORDS); }
           S.fema = all;
           aggregate();
           await render();
           S.lastFema = Date.now();
           const truncated = total > MAX_RECORDS;
-          health(
-            "femaStatus",
-            "Live",
-            `${all.length}${truncated ? ` of ${total}, cap ${MAX_RECORDS}` : " rows"}`,
-          );
-          $("progress").textContent = truncated
-            ? `Showing newest ${all.length} of ${total} filtered FEMA rows; cap disclosed.`
-            : `Live · ${S.states.size} states/territories with recent declarations`;
+          health("femaStatus", "Live", `${all.length}${truncated ? ` of ${total}, cap ${MAX_RECORDS}` : " rows"}`);
+          $("progress").textContent = truncated ? `Showing newest ${all.length} of ${total} filtered FEMA rows; cap disclosed.` : `Live · ${S.states.size} states/territories with recent declarations`;
           const days = clamp(30, 365, finite($("windowDays").value) || 120);
-          writeCache(
-            `mc-map14-fema-${days}`,
-            FEMA_CACHE_VERSION,
-            serializeFemaCache(),
-          );
+          writeCache(`mc-map14-fema-${days}`, FEMA_CACHE_VERSION, serializeFemaCache());
         } catch (e) {
           if (gen === S.generation) {
-            health(
-              "femaStatus",
-              "Unavailable",
-              e?.name === "AbortError" ? "timeout" : "request failed",
-            );
-            $("progress").textContent = S.fema.length
-              ? "OpenFEMA unavailable; cached or previously rendered markers retained."
-              : "OpenFEMA unavailable; no primary markers available.";
+            health("femaStatus", "Unavailable", e?.name === "AbortError" ? "timeout" : "request failed");
+            $("progress").textContent = S.fema.length ? "OpenFEMA unavailable; cached or previously rendered markers retained." : "OpenFEMA unavailable; no primary markers available.";
           }
         } finally {
           if (gen === S.generation) S.busy = false;
         }
       }
-      async function periodic() {
-        if (
-          document.hidden ||
-          !navigator.onLine ||
-          S.busy ||
-          Date.now() - S.lastFema < 20 * 60 * 1000
-        )
-          return;
-        await loadFema();
-      }
+      async function periodic() { if (document.hidden || !navigator.onLine || S.busy || Date.now() - S.lastFema < 20 * 60 * 1000) return; await loadFema(); }
       $("refresh").onclick = () => loadFema();
-      $("windowDays").onchange = () => {
-        S.generation++;
-        S.busy = false;
-        S.fema = [];
-        S.states = new Map();
-        for (const l of S.layers.values()) markerLayer.removeLayer(l);
-        for (const l of S.halos.values()) haloLayer.removeLayer(l);
-        S.layers.clear();
-        S.halos.clear();
-        const restored = restoreFemaFromCache();
-        loadFema({ fit: !restored });
-      };
-      document.addEventListener("visibilitychange", () => {
-        if (!document.hidden) periodic();
-      });
+      $("windowDays").onchange = () => { S.generation++; S.busy = false; S.fema = []; S.states = new Map(); for (const l of S.layers.values()) markerLayer.removeLayer(l); for (const l of S.halos.values()) haloLayer.removeLayer(l); S.layers.clear(); S.halos.clear(); const restored = restoreFemaFromCache(); loadFema({ fit: !restored }); };
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) periodic(); });
       window.addEventListener("online", periodic);
-      window.addEventListener(
-        "resize",
-        (() => {
-          let t = 0;
-          return () => {
-            clearTimeout(t);
-            t = setTimeout(() => map.invalidateSize(false), 150);
-          };
-        })(),
-      );
-      setInterval(() => {
-        if (!document.hidden) periodic();
-      }, 60 * 1000);
-      const cdcCached = restoreCDCFromCache(),
-        femaCached = restoreFemaFromCache();
-      if (!cdcCached) loadCDC(S.generation);
+      window.addEventListener("resize", (() => { let t = 0; return () => { clearTimeout(t); t = setTimeout(() => map.invalidateSize(false), 150); }; })());
+      setInterval(() => { if (!document.hidden) periodic(); }, 60 * 1000);
+      const cdcCached = restoreCDCFromCache(), femaCached = restoreFemaFromCache();
+      if (!cdcCached) loadCDC();
       loadFema({ fit: !femaCached });
     </script>
   </body>
