@@ -1,0 +1,59 @@
+name: Refresh Map 17 embedded data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '20 13 * * *'
+  push:
+    paths:
+      - 'tools/build_map17_embedded_data.py'
+      - '.github/workflows/refresh-map17-data.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-map17-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install XLSX reader
+        run: python -m pip install --disable-pip-version-check openpyxl
+
+      - name: Build authoritative snapshots into standalone HTML
+        run: python tools/build_map17_embedded_data.py
+
+      - name: Verify no Map 17 government runtime fetches remain
+        shell: bash
+        run: |
+          set -euo pipefail
+          f='daily-maps/17-agricultural-drought-farm-exposure.html'
+          ! grep -q 'fetchWithTimeout(GAZ_ZIP' "$f"
+          ! grep -q 'USDM_BASE + "?"' "$f"
+          ! grep -Eq 'services[0-9]*\.arcgis\.com|onemap\.cdc\.gov|FeatureServer|MapServer|ImageServer' "$f"
+          grep -q 'BEGIN MAP17 EMBEDDED DATA' "$f"
+          grep -q 'COUNTY_CENTROIDS' "$f"
+          grep -q 'USDM_SNAPSHOT' "$f"
+
+      - name: Commit refreshed snapshot if changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- daily-maps/17-agricultural-drought-farm-exposure.html; then
+            echo 'No Map 17 data changes.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add daily-maps/17-agricultural-drought-farm-exposure.html
+          git commit -m 'Refresh Map 17 embedded government data'
+          git push
