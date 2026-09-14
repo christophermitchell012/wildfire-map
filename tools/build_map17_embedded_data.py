@@ -29,8 +29,8 @@ USDA_PAGE = "https://www.nass.usda.gov/Publications/AgCensus/2022/Online_Resourc
 CDC_PAGE = "https://www.atsdr.cdc.gov/place-health/php/svi/svi-data-documentation-download.html"
 
 
-def get(url: str, timeout: int = 45) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
+def get(url: str, timeout: int = 45, accept: str = "*/*") -> bytes:
+    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": accept})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return r.read()
 
@@ -77,6 +77,8 @@ def build_centroids() -> dict:
 
 def build_usdm() -> tuple[dict, str]:
     # USDM is weekly. Ask for a short range and keep the newest record per county.
+    # The official service documents CSV as its default response, so parse CSV
+    # instead of assuming JSON from an Accept negotiation.
     end = datetime.now(timezone.utc).date() - timedelta(days=1)
     start = end - timedelta(days=15)
     fmt = lambda d: f"{d.month}/{d.day}/{d.year}"
@@ -86,12 +88,13 @@ def build_usdm() -> tuple[dict, str]:
         "enddate": fmt(end),
         "statisticsType": "1",
     })
-    data = json.loads(get(f"{USDM}?{q}").decode("utf-8"))
-    if not isinstance(data, list):
-        raise RuntimeError("USDM did not return a list")
+    raw_text = get(f"{USDM}?{q}", accept="text/csv").decode("utf-8-sig", "replace")
+    rows = list(csv.DictReader(io.StringIO(raw_text)))
+    if not rows:
+        raise RuntimeError(f"USDM returned no CSV records; prefix={raw_text[:200]!r}")
     out = {}
     dates = []
-    for raw in data:
+    for raw in rows:
         low = {str(k).lower(): v for k, v in raw.items()}
         fips = norm_fips(low.get("fips") or low.get("countyfips") or low.get("geoid"))
         if not fips:
@@ -111,7 +114,8 @@ def build_usdm() -> tuple[dict, str]:
         if prev is None or str(row["date"]) > str(prev.get("date", "")):
             out[fips] = row
     if len(out) < 3000:
-        raise RuntimeError(f"USDM county coverage too small: {len(out)}")
+        sample_headers = list(rows[0].keys()) if rows else []
+        raise RuntimeError(f"USDM county coverage too small: {len(out)}; headers={sample_headers}")
     return out, max(dates) if dates else "latest returned"
 
 
@@ -262,19 +266,13 @@ def patch_html(centroids, usdm, usdm_date, usda, usda_meta, svi, svi_meta):
     if n2 != 1:
         raise RuntimeError("Could not patch loadDrought")
 
-    # ZIP parsing is no longer needed at runtime.
     text = re.sub(r'\s*<script\s+src="https://cdnjs\.cloudflare\.com/ajax/libs/fflate/[^\"]+"\s*></script>', '', text)
-
-    # Remove unused ArcGIS/Esri host labels from the generic runtime health dictionary.
     text = re.sub(r'\s*"services[235]\.arcgis\.com":\s*"ArcGIS",', '', text)
     text = re.sub(r'\s*"onemap\.cdc\.gov":\s*"CDC/ATSDR",', '', text)
-
-    # Make the source-health wording truthful for build-time snapshots.
     text = text.replace('"U.S. Drought Monitor REST"', '"U.S. Drought Monitor snapshot"')
     text = text.replace('"Census Gazetteer coordinates"', '"Census Gazetteer snapshot"')
     text = text.replace('"USDA Ag Census exposure"', '"USDA Ag Census snapshot"')
     text = text.replace('"CDC/ATSDR SVI"', '"CDC/ATSDR SVI snapshot"')
-
     TARGET.write_text(text, encoding="utf-8")
 
 
