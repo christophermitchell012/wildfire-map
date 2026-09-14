@@ -1,4 +1,4 @@
-# v3: build-time snapshots plus deterministic standalone browser runtime
+# v4: build-time dynamic snapshots + versioned county localStorage cache
 name: Refresh Map 17 embedded data
 
 on:
@@ -34,14 +34,15 @@ jobs:
       - name: Build authoritative snapshots into standalone HTML
         run: python tools/build_map17_embedded_data.py
 
-      - name: Remove legacy fetch runtime and embed Leaflet
+      - name: Harden runtime and externalize county reference cache
         run: python tools/harden_map17_runtime.py
 
-      - name: Verify Map 17 standalone runtime
+      - name: Verify Map 17 runtime and county cache contract
         shell: bash
         run: |
           set -euo pipefail
           f='daily-maps/17-agricultural-drought-farm-exposure.html'
+          c='daily-maps/data/county-reference-2025-gazetteer-v1.json'
           ! grep -q 'fetchWithTimeout(GAZ_ZIP' "$f"
           ! grep -q 'USDM_BASE + "?"' "$f"
           ! grep -Eq 'services[0-9]*\.arcgis\.com|onemap\.cdc\.gov|FeatureServer|MapServer|ImageServer' "$f"
@@ -51,19 +52,35 @@ jobs:
           ! grep -q 'cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css' "$f"
           test "$(grep -o 'data-map17-leaflet="inline"' "$f" | wc -l)" -eq 2
           grep -q 'BEGIN MAP17 EMBEDDED DATA' "$f"
-          grep -q 'COUNTY_CENTROIDS' "$f"
+          grep -q 'const COUNTY_CENTROIDS = Object.freeze({});' "$f"
+          grep -q 'const COUNTY_CACHE_VERSION = "2025-gazetteer-v1";' "$f"
+          grep -q 'localStorage.getItem(COUNTY_CACHE_KEY)' "$f"
+          grep -q 'localStorage.setItem(COUNTY_CACHE_KEY' "$f"
+          grep -q 'data/county-reference-2025-gazetteer-v1.json' "$f"
           grep -q 'USDM_SNAPSHOT' "$f"
+          test -s "$c"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path('daily-maps/data/county-reference-2025-gazetteer-v1.json').read_text())
+          assert p['version'] == '2025-gazetteer-v1'
+          assert len(p['counties']) >= 3000
+          for fips, county in list(p['counties'].items())[:20]:
+              assert len(fips) == 5 and fips.isdigit()
+              float(county['lat']); float(county['lon'])
+          print('county cache snapshot validation passed:', len(p['counties']))
+          PY
 
       - name: Commit refreshed snapshot if changed
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet -- daily-maps/17-agricultural-drought-farm-exposure.html; then
+          if git diff --quiet -- daily-maps/17-agricultural-drought-farm-exposure.html daily-maps/data/county-reference-2025-gazetteer-v1.json; then
             echo 'No Map 17 data/runtime changes.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add daily-maps/17-agricultural-drought-farm-exposure.html
-          git commit -m 'Refresh and harden Map 17 standalone runtime'
+          git add daily-maps/17-agricultural-drought-farm-exposure.html daily-maps/data/county-reference-2025-gazetteer-v1.json
+          git commit -m 'Restore Map 17 county localStorage cache'
           git push
