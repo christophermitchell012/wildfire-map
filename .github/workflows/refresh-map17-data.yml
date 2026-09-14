@@ -1,4 +1,4 @@
-# v2: build-time snapshots; no government data fetches in public browser
+# v3: build-time snapshots plus deterministic standalone browser runtime
 name: Refresh Map 17 embedded data
 
 on:
@@ -8,6 +8,7 @@ on:
   push:
     paths:
       - 'tools/build_map17_embedded_data.py'
+      - 'tools/harden_map17_runtime.py'
       - '.github/workflows/refresh-map17-data.yml'
 
 permissions:
@@ -33,7 +34,10 @@ jobs:
       - name: Build authoritative snapshots into standalone HTML
         run: python tools/build_map17_embedded_data.py
 
-      - name: Verify no Map 17 government runtime fetches remain
+      - name: Remove legacy fetch runtime and embed Leaflet
+        run: python tools/harden_map17_runtime.py
+
+      - name: Verify Map 17 standalone runtime
         shell: bash
         run: |
           set -euo pipefail
@@ -41,6 +45,11 @@ jobs:
           ! grep -q 'fetchWithTimeout(GAZ_ZIP' "$f"
           ! grep -q 'USDM_BASE + "?"' "$f"
           ! grep -Eq 'services[0-9]*\.arcgis\.com|onemap\.cdc\.gov|FeatureServer|MapServer|ImageServer' "$f"
+          ! grep -q 'window.fetch = resilientFetch' "$f"
+          ! grep -q 'data-mitchellco-performance="gridwatch-v1"' "$f"
+          ! grep -q 'cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js' "$f"
+          ! grep -q 'cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css' "$f"
+          test "$(grep -o 'data-map17-leaflet="inline"' "$f" | wc -l)" -eq 2
           grep -q 'BEGIN MAP17 EMBEDDED DATA' "$f"
           grep -q 'COUNTY_CENTROIDS' "$f"
           grep -q 'USDM_SNAPSHOT' "$f"
@@ -50,11 +59,11 @@ jobs:
         run: |
           set -euo pipefail
           if git diff --quiet -- daily-maps/17-agricultural-drought-farm-exposure.html; then
-            echo 'No Map 17 data changes.'
+            echo 'No Map 17 data/runtime changes.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add daily-maps/17-agricultural-drought-farm-exposure.html
-          git commit -m 'Refresh Map 17 embedded government data'
+          git commit -m 'Refresh and harden Map 17 standalone runtime'
           git push
