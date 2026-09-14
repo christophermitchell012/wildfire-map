@@ -96,6 +96,35 @@ def main() -> None:
             1,
         )
 
+    # Rendering thousands of county objects must not be one long main-thread task.
+    # Make render async and yield every 250 counties so controls/paint stay alive.
+    if "        function render() {" in text:
+        text = text.replace("        function render() {", "        async function render() {", 1)
+    if "          let renderedCount = 0;" not in text:
+        anchor = "          const ranked = [];\n          for (const [fips, county] of state.counties) {"
+        if anchor not in text:
+            raise RuntimeError("Could not locate county render loop")
+        text = text.replace(
+            anchor,
+            "          const ranked = [];\n          let renderedCount = 0;\n          for (const [fips, county] of state.counties) {",
+            1,
+        )
+    if "await new Promise((resolve) => setTimeout(resolve, 0));" not in text:
+        anchor = "          }\n          ranked.sort((a, b) => b.sc - a.sc);"
+        if anchor not in text:
+            raise RuntimeError("Could not locate end of county render loop")
+        text = text.replace(
+            anchor,
+            "            if (++renderedCount % 250 === 0)\n              await new Promise((resolve) => setTimeout(resolve, 0));\n          }\n          ranked.sort((a, b) => b.sc - a.sc);",
+            1,
+        )
+    if "          render();\n          $(\"updated\")" in text:
+        text = text.replace(
+            "          render();\n          $(\"updated\")",
+            "          await render();\n          $(\"updated\")",
+            1,
+        )
+
     TARGET.write_text(text, encoding="utf-8")
 
     final = TARGET.read_text(encoding="utf-8")
@@ -108,11 +137,13 @@ def main() -> None:
         "embedded data": "BEGIN MAP17 EMBEDDED DATA" in final,
         "shared canvas": "const sharedRenderer = L.canvas({ padding: 0.5 });" in final,
         "no per-marker canvas": "renderer: L.canvas()," not in final,
+        "async render": "async function render()" in final and "await render();" in final,
+        "render yielding": "renderedCount % 250" in final,
     }
     failed = [name for name, ok in checks.items() if not ok]
     if failed:
         raise RuntimeError("Map 17 hardening failed: " + ", ".join(failed))
-    print("Map 17 hardened: embedded Leaflet, no fetch monkey-patch, shared canvas renderer.")
+    print("Map 17 hardened: embedded Leaflet, no fetch monkey-patch, shared/yielding canvas render.")
 
 
 if __name__ == "__main__":
