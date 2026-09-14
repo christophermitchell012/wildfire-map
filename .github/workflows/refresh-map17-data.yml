@@ -1,4 +1,4 @@
-# v6: build-time snapshots + regional polygons + sidebar layers + required CDC SVI
+# v7: build-time snapshots + regional polygons + sidebar layers + required CDC SVI
 name: Refresh Map 17 embedded data
 
 on:
@@ -44,7 +44,24 @@ jobs:
           PY
           python tools/redesign_map17_layers.py
       - name: Finalize ring control, sidebar layers, and CDC SVI
-        run: python tools/finalize_map17_controls_svi.py
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('tools/finalize_map17_controls_svi.py')
+          s=p.read_text()
+          needle='CDC_US_COUNTY_CANDIDATES = [\n'
+          extras=(
+            '    "https://svi.cdc.gov/Documents/Data/2022/csv/states_counties/SVI2022_US_COUNTY.csv",\n'
+            '    "https://svi.cdc.gov/Documents/Data/2022/csv/states_counties/SVI2022_US_county.csv",\n'
+            '    "https://svi.cdc.gov/Documents/Data/2022/csv/states_counties/SVI_2022_US_county.csv",\n'
+            '    "https://svi.cdc.gov/Documents/Data/2022/csv/states_counties/US_COUNTY.csv",\n'
+          )
+          if extras.splitlines()[0].strip() not in s:
+              s=s.replace(needle, needle+extras, 1)
+          p.write_text(s)
+          PY
+          python tools/finalize_map17_controls_svi.py
       - name: Verify Map 17 regional polygon contract
         shell: bash
         run: |
