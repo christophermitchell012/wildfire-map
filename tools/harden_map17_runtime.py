@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Remove Map 17's legacy fetch runtime and inline Leaflet for deterministic startup."""
+"""Remove Map 17's legacy fetch runtime and harden browser startup/rendering."""
 from __future__ import annotations
 
 import re
@@ -22,9 +22,8 @@ def make_leaflet_css_standalone(css: str) -> str:
     """Drop Leaflet's decorative external image URLs.
 
     Map 17 uses CircleMarkers and text controls, so marker-icon and layer-control
-    image assets are not required for the product. Removing those URLs is safer
-    than turning them into new runtime dependencies or failing the build when a
-    CDN's optional image layout differs from its CSS layout.
+    image assets are not required for the product. Removing those URLs avoids
+    another runtime dependency.
     """
     return re.sub(r"url\((?!\s*['\"]?data:)[^)]+\)", "none", css, flags=re.I)
 
@@ -37,10 +36,8 @@ def literal_sub(pattern: re.Pattern[str], replacement: str, text: str) -> str:
 def main() -> None:
     text = TARGET.read_text(encoding="utf-8")
 
-    # This inherited runtime globally monkey-patched window.fetch, added retries,
-    # timers and abort controllers, and is inappropriate for Map 17 because all
-    # government data is embedded at build time. Removing it also eliminates the
-    # timeout/retry cascade reported in production.
+    # Remove inherited global fetch monkey patch. Map 17's government data is
+    # embedded at build time, so retry/abort wrappers are unnecessary and harmful.
     text, removed = re.subn(
         r"\s*<script\s+data-mitchellco-runtime=\"evacwatch-v2\"\s+data-mitchellco-performance=\"gridwatch-v1\"\s*>.*?</script>",
         "",
@@ -51,6 +48,8 @@ def main() -> None:
     if removed != 1 and "data-mitchellco-performance=\"gridwatch-v1\"" in text:
         raise RuntimeError("Could not remove legacy global fetch runtime")
 
+    # Inline Leaflet itself so failure of a third-party CDN cannot prevent L.map()
+    # from existing and leave the whole UI stuck in its initial Loading state.
     css = make_leaflet_css_standalone(get_text(LEAFLET_CSS))
     js = get_text(LEAFLET_JS)
     js = js.replace("</script", "<\\/script")
@@ -82,6 +81,21 @@ def main() -> None:
     elif text.count('data-map17-leaflet="inline"') < 2:
         raise RuntimeError("Could not locate Leaflet JS dependency")
 
+    # The original page instantiated L.canvas() separately for every marker,
+    # creating thousands of renderers. One shared renderer handles all county
+    # CircleMarkers and keeps the main thread responsive.
+    if "renderer: L.canvas()," in text:
+        text = text.replace("renderer: L.canvas(),", "renderer: sharedRenderer,")
+    if "const sharedRenderer = L.canvas" not in text:
+        anchor = "        const droughtLayer = L.layerGroup().addTo(map),"
+        if anchor not in text:
+            raise RuntimeError("Could not locate layer-group initialization")
+        text = text.replace(
+            anchor,
+            "        const sharedRenderer = L.canvas({ padding: 0.5 });\n" + anchor,
+            1,
+        )
+
     TARGET.write_text(text, encoding="utf-8")
 
     final = TARGET.read_text(encoding="utf-8")
@@ -92,11 +106,13 @@ def main() -> None:
         "external Leaflet CSS": LEAFLET_CSS not in final,
         "inline Leaflet JS/CSS": final.count('data-map17-leaflet="inline"') == 2,
         "embedded data": "BEGIN MAP17 EMBEDDED DATA" in final,
+        "shared canvas": "const sharedRenderer = L.canvas({ padding: 0.5 });" in final,
+        "no per-marker canvas": "renderer: L.canvas()," not in final,
     }
     failed = [name for name, ok in checks.items() if not ok]
     if failed:
         raise RuntimeError("Map 17 hardening failed: " + ", ".join(failed))
-    print("Map 17 runtime hardened: no fetch monkey-patch; Leaflet JS/CSS embedded.")
+    print("Map 17 hardened: embedded Leaflet, no fetch monkey-patch, shared canvas renderer.")
 
 
 if __name__ == "__main__":
