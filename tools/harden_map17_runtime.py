@@ -122,15 +122,17 @@ def externalize_counties(text: str) -> str:
             return false;
           }
         }'''
-    text, n = re.subn(
+    loader_re = re.compile(
         r"async function loadCentroids\(run\) \{.*?\n\s*\}\n\s*async function loadDrought\(run\) \{",
+        re.S,
+    )
+    if not loader_re.search(text):
+        raise RuntimeError("Could not replace county loader with localStorage implementation")
+    text = literal_sub(
+        loader_re,
         loader + "\n        async function loadDrought(run) {",
         text,
-        count=1,
-        flags=re.S,
     )
-    if n != 1:
-        raise RuntimeError("Could not replace county loader with localStorage implementation")
     return text
 
 
