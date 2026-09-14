@@ -1,4 +1,4 @@
-# v7: build-time snapshots + regional polygons + sidebar layers + required CDC SVI
+# v8: build-time snapshots + regional polygons + sidebar layers + required CDC SVI
 name: Refresh Map 17 embedded data
 
 on:
@@ -52,13 +52,14 @@ jobs:
           s=p.read_text()
           needle='CDC_US_COUNTY_CANDIDATES = [\n'
           extras=(
-            '    "https://svi.cdc.gov/Documents/Data/2022/csv/states_counties/SVI2022_US_COUNTY.csv",\n'
-            '    "https://svi.cdc.gov/Documents/Data/2022/csv/states_counties/SVI2022_US_county.csv",\n'
             '    "https://svi.cdc.gov/Documents/Data/2022/csv/states_counties/SVI_2022_US_county.csv",\n'
-            '    "https://svi.cdc.gov/Documents/Data/2022/csv/states_counties/US_COUNTY.csv",\n'
           )
-          if extras.splitlines()[0].strip() not in s:
+          if 'SVI_2022_US_county.csv' not in s:
               s=s.replace(needle, needle+extras, 1)
+          s=s.replace(
+              'needle = \'$("region").addEventListener("change", async () => {\'',
+              'needle = \'$("region").addEventListener("change", async (e) => {\'',
+          )
           p.write_text(s)
           PY
           python tools/finalize_map17_controls_svi.py
