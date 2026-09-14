@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Remove Map 17's legacy fetch runtime and harden browser startup/rendering."""
+"""Harden Map 17 browser startup/rendering and externalize county reference data."""
 from __future__ import annotations
 
+import json
 import re
 import urllib.request
 from pathlib import Path
 
 TARGET = Path("daily-maps/17-agricultural-drought-farm-exposure.html")
+COUNTY_SNAPSHOT = Path("daily-maps/data/county-reference-2025-gazetteer-v1.json")
+COUNTY_CACHE_VERSION = "2025-gazetteer-v1"
 LEAFLET_CSS = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
 LEAFLET_JS = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
 UA = "MitchellCo-DailyMap/1.0 (+https://christophermitchell012.github.io/wildfire-map/)"
@@ -19,25 +22,121 @@ def get_text(url: str) -> str:
 
 
 def make_leaflet_css_standalone(css: str) -> str:
-    """Drop Leaflet's decorative external image URLs.
-
-    Map 17 uses CircleMarkers and text controls, so marker-icon and layer-control
-    image assets are not required for the product. Removing those URLs avoids
-    another runtime dependency.
-    """
     return re.sub(r"url\((?!\s*['\"]?data:)[^)]+\)", "none", css, flags=re.I)
 
 
 def literal_sub(pattern: re.Pattern[str], replacement: str, text: str) -> str:
-    """Use a callable replacement so backslashes in minified JS/CSS stay literal."""
     return pattern.sub(lambda _match: replacement, text, count=1)
+
+
+def externalize_counties(text: str) -> str:
+    """Move static county reference data out of HTML and use versioned localStorage."""
+    county_re = re.compile(
+        r"const COUNTY_CENTROIDS = Object\.freeze\((\{.*?\})\);\n\s*const USDM_SNAPSHOT",
+        re.S,
+    )
+    match = county_re.search(text)
+    if match:
+        counties = json.loads(match.group(1))
+        if len(counties) < 3000:
+            raise RuntimeError(f"County reference coverage too small: {len(counties)}")
+        payload = {
+            "version": COUNTY_CACHE_VERSION,
+            "vintage": "2025",
+            "source": "U.S. Census Bureau 2025 Gazetteer county representative points",
+            "counties": counties,
+        }
+        COUNTY_SNAPSHOT.parent.mkdir(parents=True, exist_ok=True)
+        COUNTY_SNAPSHOT.write_text(
+            json.dumps(payload, separators=(",", ":"), ensure_ascii=False),
+            encoding="utf-8",
+        )
+        replacement = (
+            f'const COUNTY_CACHE_VERSION = "{COUNTY_CACHE_VERSION}";\n'
+            '        const COUNTY_CACHE_KEY = `mitchellco:county-ref:${COUNTY_CACHE_VERSION}`;\n'
+            '        const COUNTY_SNAPSHOT_URL = "data/county-reference-2025-gazetteer-v1.json";\n'
+            '        const COUNTY_CENTROIDS = Object.freeze({});\n'
+            '        const USDM_SNAPSHOT'
+        )
+        text = literal_sub(county_re, replacement, text)
+    elif 'const COUNTY_CACHE_VERSION = "2025-gazetteer-v1";' not in text:
+        raise RuntimeError("Could not locate embedded county reference data")
+
+    loader = r'''function validCountyPayload(payload) {
+          if (!payload || payload.version !== COUNTY_CACHE_VERSION || !payload.counties || typeof payload.counties !== "object") return false;
+          const entries = Object.entries(payload.counties);
+          if (entries.length < 3000) return false;
+          for (let i = 0; i < Math.min(12, entries.length); i++) {
+            const [fips, county] = entries[i];
+            if (!/^\d{5}$/.test(fips) || !county || !Number.isFinite(Number(county.lat)) || !Number.isFinite(Number(county.lon))) return false;
+          }
+          return true;
+        }
+        function readCountyCache() {
+          try {
+            const raw = localStorage.getItem(COUNTY_CACHE_KEY);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            if (!validCountyPayload(parsed)) {
+              localStorage.removeItem(COUNTY_CACHE_KEY);
+              return null;
+            }
+            return parsed;
+          } catch (_err) {
+            return null;
+          }
+        }
+        function writeCountyCache(payload) {
+          try {
+            localStorage.setItem(COUNTY_CACHE_KEY, JSON.stringify(payload));
+          } catch (_err) {
+            // Storage may be disabled/full. The validated in-memory snapshot remains usable.
+          }
+        }
+        async function loadCentroids(run) {
+          let payload = readCountyCache();
+          let fromCache = Boolean(payload);
+          try {
+            if (!payload) {
+              const response = await fetch(COUNTY_SNAPSHOT_URL, { cache: "force-cache" });
+              if (!response.ok) throw new Error(`county snapshot HTTP ${response.status}`);
+              payload = await response.json();
+              if (!validCountyPayload(payload)) throw new Error("county snapshot failed validation");
+              writeCountyCache(payload);
+            }
+            if (run !== state.run) return false;
+            state.counties = new Map(Object.entries(payload.counties));
+            $("centroidCount").textContent = state.counties.size.toLocaleString();
+            setHealth(
+              "hCentroids",
+              fromCache ? "Cached" : "Live",
+              fromCache ? "cached" : "live",
+              `${fromCache ? "localStorage" : "same-origin snapshot"} • Census Gazetteer 2025 • ${state.counties.size.toLocaleString()} counties`,
+            );
+            return true;
+          } catch (err) {
+            if (run === state.run) {
+              setHealth("hCentroids", "Unavailable", "bad", String(err));
+              diag(`County reference unavailable: ${err}`);
+            }
+            return false;
+          }
+        }'''
+    text, n = re.subn(
+        r"async function loadCentroids\(run\) \{.*?\n\s*\}\n\s*async function loadDrought\(run\) \{",
+        loader + "\n        async function loadDrought(run) {",
+        text,
+        count=1,
+        flags=re.S,
+    )
+    if n != 1:
+        raise RuntimeError("Could not replace county loader with localStorage implementation")
+    return text
 
 
 def main() -> None:
     text = TARGET.read_text(encoding="utf-8")
 
-    # Remove inherited global fetch monkey patch. Map 17's government data is
-    # embedded at build time, so retry/abort wrappers are unnecessary and harmful.
     text, removed = re.subn(
         r"\s*<script\s+data-mitchellco-runtime=\"evacwatch-v2\"\s+data-mitchellco-performance=\"gridwatch-v1\"\s*>.*?</script>",
         "",
@@ -48,8 +147,8 @@ def main() -> None:
     if removed != 1 and "data-mitchellco-performance=\"gridwatch-v1\"" in text:
         raise RuntimeError("Could not remove legacy global fetch runtime")
 
-    # Inline Leaflet itself so failure of a third-party CDN cannot prevent L.map()
-    # from existing and leave the whole UI stuck in its initial Loading state.
+    text = externalize_counties(text)
+
     css = make_leaflet_css_standalone(get_text(LEAFLET_CSS))
     js = get_text(LEAFLET_JS)
     js = js.replace("</script", "<\\/script")
@@ -81,9 +180,6 @@ def main() -> None:
     elif text.count('data-map17-leaflet="inline"') < 2:
         raise RuntimeError("Could not locate Leaflet JS dependency")
 
-    # The original page instantiated L.canvas() separately for every marker,
-    # creating thousands of renderers. One shared renderer handles all county
-    # CircleMarkers and keeps the main thread responsive.
     if "renderer: L.canvas()," in text:
         text = text.replace("renderer: L.canvas(),", "renderer: sharedRenderer,")
     if "const sharedRenderer = L.canvas" not in text:
@@ -96,8 +192,6 @@ def main() -> None:
             1,
         )
 
-    # Rendering thousands of county objects must not be one long main-thread task.
-    # Make render async and yield every 250 counties so controls/paint stay alive.
     if "        function render() {" in text:
         text = text.replace("        function render() {", "        async function render() {", 1)
     if "          let renderedCount = 0;" not in text:
@@ -134,7 +228,11 @@ def main() -> None:
         "external Leaflet JS": LEAFLET_JS not in final,
         "external Leaflet CSS": LEAFLET_CSS not in final,
         "inline Leaflet JS/CSS": final.count('data-map17-leaflet="inline"') == 2,
-        "embedded data": "BEGIN MAP17 EMBEDDED DATA" in final,
+        "embedded dynamic data": "BEGIN MAP17 EMBEDDED DATA" in final,
+        "county data externalized": "const COUNTY_CENTROIDS = Object.freeze({});" in final,
+        "county localStorage": "localStorage.getItem(COUNTY_CACHE_KEY)" in final and "localStorage.setItem(COUNTY_CACHE_KEY" in final,
+        "county same-origin fallback": 'const COUNTY_SNAPSHOT_URL = "data/county-reference-2025-gazetteer-v1.json";' in final,
+        "county snapshot exists": COUNTY_SNAPSHOT.exists(),
         "shared canvas": "const sharedRenderer = L.canvas({ padding: 0.5 });" in final,
         "no per-marker canvas": "renderer: L.canvas()," not in final,
         "async render": "async function render()" in final and "await render();" in final,
@@ -143,7 +241,7 @@ def main() -> None:
     failed = [name for name, ok in checks.items() if not ok]
     if failed:
         raise RuntimeError("Map 17 hardening failed: " + ", ".join(failed))
-    print("Map 17 hardened: embedded Leaflet, no fetch monkey-patch, shared/yielding canvas render.")
+    print("Map 17 hardened: counties localStorage cache-first with same-origin fallback; embedded Leaflet; shared/yielding canvas render.")
 
 
 if __name__ == "__main__":
