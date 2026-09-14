@@ -1,4 +1,4 @@
-# v5: build-time snapshots + versioned localStorage + regional polygon layers
+# v6: build-time snapshots + regional polygons + sidebar layers + required CDC SVI
 name: Refresh Map 17 embedded data
 
 on:
@@ -10,6 +10,7 @@ on:
       - 'tools/build_map17_embedded_data.py'
       - 'tools/harden_map17_runtime.py'
       - 'tools/redesign_map17_layers.py'
+      - 'tools/finalize_map17_controls_svi.py'
       - '.github/workflows/refresh-map17-data.yml'
 
 permissions:
@@ -34,7 +35,6 @@ jobs:
       - name: Build regional county geometry and redesign layers
         shell: bash
         run: |
-          # The script's source audit must flag real Esri service references, not explanatory prose such as "no ArcGIS/Esri".
           python - <<'PY'
           from pathlib import Path
           p=Path('tools/redesign_map17_layers.py')
@@ -43,6 +43,8 @@ jobs:
           p.write_text(s)
           PY
           python tools/redesign_map17_layers.py
+      - name: Finalize ring control, sidebar layers, and CDC SVI
+        run: python tools/finalize_map17_controls_svi.py
       - name: Verify Map 17 regional polygon contract
         shell: bash
         run: |
@@ -55,19 +57,27 @@ jobs:
           ! grep -q 'window.fetch = resilientFetch' "$f"
           ! grep -q 'data-mitchellco-performance="gridwatch-v1"' "$f"
           ! grep -q 'renderer: L.canvas(),' "$f"
+          ! grep -q 'L.control.layers(null' "$f"
           grep -q 'id="region"' "$f"
+          grep -q 'class="region-ring"' "$f"
+          grep -q 'id="layer-controls"' "$f"
+          grep -q 'id="layer-drought"' "$f"
+          grep -q 'id="layer-ag"' "$f"
+          grep -q 'id="layer-svi"' "$f"
+          grep -q 'id="layer-score"' "$f"
+          grep -q 'id="layer-boundaries"' "$f"
           grep -q 'mitchellco:county-geometry' "$f"
-          grep -q 'County boundaries' "$f"
-          grep -q 'Drought severity (USDM)' "$f"
-          grep -q 'Agricultural exposure' "$f"
-          grep -q 'Community vulnerability (CDC SVI)' "$f"
-          grep -q 'Highest combined priority' "$f"
           grep -q 'localStorage.getItem(COUNTY_CACHE_KEY)' "$f"
           grep -q 'localStorage.setItem(COUNTY_CACHE_KEY' "$f"
           test -s "$c"
           python - <<'PY'
-          import json
+          import json,re
           from pathlib import Path
+          f=Path('daily-maps/17-agricultural-drought-farm-exposure.html').read_text()
+          m=re.search(r'const CDC_SVI = Object\.freeze\((\{.*?\})\);', f, re.S)
+          assert m, 'CDC_SVI object missing'
+          svi=json.loads(m.group(1))
+          assert len(svi)>=3000, len(svi)
           ref=json.loads(Path('daily-maps/data/county-reference-2025-gazetteer-v1.json').read_text())
           assert ref['version']=='2025-gazetteer-v1' and len(ref['counties'])>=3000
           total=0
@@ -78,7 +88,7 @@ jobs:
               assert g['version']=='2025-cb20m-v1' and g['region']==r and len(g['features'])>=100
               total += len(g['features'])
           assert total >= 3100
-          print('regional county geometry passed:', total)
+          print('regional county geometry:', total, 'SVI counties:', len(svi))
           PY
       - name: Commit refreshed Map 17 if changed
         shell: bash
@@ -96,5 +106,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add "${paths[@]}"
-          git commit -m 'Redesign Map 17 with regional county layers'
+          git commit -m 'Fix Map 17 controls and restore CDC SVI'
           git push
