@@ -29,6 +29,11 @@ def make_leaflet_css_standalone(css: str) -> str:
     return re.sub(r"url\((?!\s*['\"]?data:)[^)]+\)", "none", css, flags=re.I)
 
 
+def literal_sub(pattern: re.Pattern[str], replacement: str, text: str) -> str:
+    """Use a callable replacement so backslashes in minified JS/CSS stay literal."""
+    return pattern.sub(lambda _match: replacement, text, count=1)
+
+
 def main() -> None:
     text = TARGET.read_text(encoding="utf-8")
 
@@ -56,7 +61,11 @@ def main() -> None:
         re.S,
     )
     if external_css.search(text):
-        text = external_css.sub("\n    <style data-map17-leaflet=\"inline\">\n" + css + "\n    </style>", text, count=1)
+        text = literal_sub(
+            external_css,
+            "\n    <style data-map17-leaflet=\"inline\">\n" + css + "\n    </style>",
+            text,
+        )
     elif 'data-map17-leaflet="inline"' not in text:
         raise RuntimeError("Could not locate Leaflet CSS dependency")
 
@@ -65,7 +74,11 @@ def main() -> None:
         re.S,
     )
     if external_js.search(text):
-        text = external_js.sub("\n    <script data-map17-leaflet=\"inline\">\n" + js + "\n    </script>", text, count=1)
+        text = literal_sub(
+            external_js,
+            "\n    <script data-map17-leaflet=\"inline\">\n" + js + "\n    </script>",
+            text,
+        )
     elif text.count('data-map17-leaflet="inline"') < 2:
         raise RuntimeError("Could not locate Leaflet JS dependency")
 
