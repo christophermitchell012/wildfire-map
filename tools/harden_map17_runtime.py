@@ -2,8 +2,6 @@
 """Remove Map 17's legacy fetch runtime and inline Leaflet for deterministic startup."""
 from __future__ import annotations
 
-import base64
-import mimetypes
 import re
 import urllib.request
 from pathlib import Path
@@ -20,29 +18,15 @@ def get_text(url: str) -> str:
         return r.read().decode("utf-8", "replace")
 
 
-def get_bytes(url: str) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=45) as r:
-        return r.read()
+def make_leaflet_css_standalone(css: str) -> str:
+    """Drop Leaflet's decorative external image URLs.
 
-
-def data_uri(url: str) -> str:
-    raw = get_bytes(url)
-    mime = mimetypes.guess_type(url)[0] or "application/octet-stream"
-    return f"data:{mime};base64,{base64.b64encode(raw).decode('ascii')}"
-
-
-def inline_leaflet_css_assets(css: str) -> str:
-    base = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/"
-
-    def repl(match: re.Match[str]) -> str:
-        raw = match.group(1).strip("'\"")
-        if raw.startswith("data:") or raw.startswith("http"):
-            return match.group(0)
-        absolute = base + raw.lstrip("./")
-        return f"url('{data_uri(absolute)}')"
-
-    return re.sub(r"url\(([^)]+)\)", repl, css)
+    Map 17 uses CircleMarkers and text controls, so marker-icon and layer-control
+    image assets are not required for the product. Removing those URLs is safer
+    than turning them into new runtime dependencies or failing the build when a
+    CDN's optional image layout differs from its CSS layout.
+    """
+    return re.sub(r"url\((?!\s*['\"]?data:)[^)]+\)", "none", css, flags=re.I)
 
 
 def main() -> None:
@@ -62,9 +46,8 @@ def main() -> None:
     if removed != 1 and "data-mitchellco-performance=\"gridwatch-v1\"" in text:
         raise RuntimeError("Could not remove legacy global fetch runtime")
 
-    css = inline_leaflet_css_assets(get_text(LEAFLET_CSS))
+    css = make_leaflet_css_standalone(get_text(LEAFLET_CSS))
     js = get_text(LEAFLET_JS)
-    # Avoid accidentally terminating the host script/style blocks.
     js = js.replace("</script", "<\\/script")
     css = css.replace("</style", "<\\/style")
 
@@ -88,7 +71,6 @@ def main() -> None:
 
     TARGET.write_text(text, encoding="utf-8")
 
-    # Hard postconditions.
     final = TARGET.read_text(encoding="utf-8")
     checks = {
         "legacy fetch override": "window.fetch = resilientFetch" not in final,
