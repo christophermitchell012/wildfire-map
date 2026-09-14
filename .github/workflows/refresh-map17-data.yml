@@ -1,3 +1,4 @@
+# v2: build-time snapshots; no government data fetches in public browser
 name: Refresh Map 17 embedded data
 
 on:
