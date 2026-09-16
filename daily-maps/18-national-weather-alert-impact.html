@@ -1,43 +1,939 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AlertScope | National Weather Alert Impact</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230e1317'/%3E%3Cpath d='M16 5 28 26H4Z' fill='none' stroke='%23ffd05a' stroke-width='2.5'/%3E%3Cpath d='M16 11v8m0 3v1' stroke='%23ff5b5b' stroke-width='2.8' stroke-linecap='round'/%3E%3C/svg%3E">
-<!-- Google tag (gtag.js) --><script async src="https://www.googletagmanager.com/gtag/js?id=G-8SVEH8WD1R"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-8SVEH8WD1R');</script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<style>
-:root{color-scheme:dark;--bg:#0e1317;--panel:#161c21;--card:#1f272d;--line:#39444c;--text:#f3f7f9;--muted:#9aa8b0;--blue:#62a8ff;--yellow:#ffd05a;--orange:#ff974d;--red:#ff5b5b;--purple:#c99cff;--green:#7edb9a}*{box-sizing:border-box}html,body{height:100%;margin:0}body{background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}header{height:58px;display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line)}h1{font-size:16px;margin:0}.sub,.muted{font-size:11px;color:var(--muted)}.spacer{flex:1}.ring{display:flex;align-items:center;gap:7px;padding:3px 5px 3px 10px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--muted);font-size:11px}.ring select{color:var(--text);border:0;border-left:1px solid var(--line);border-radius:999px;background:#11171b;padding:4px 24px 4px 8px}.shell{height:calc(100% - 58px);display:grid;grid-template-columns:310px 1fr}.side{overflow:auto;padding:12px;background:var(--panel);border-right:1px solid var(--line)}#map{height:100%;background:#10171b}.card{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:10px;margin-bottom:10px}.card h2{font-size:12px;margin:0 0 7px}.toggle{display:flex;gap:8px;align-items:flex-start;margin:8px 0;font-size:12px;cursor:pointer}.toggle input{margin-top:2px;accent-color:var(--blue)}.sw{width:19px;height:12px;border-radius:3px;margin-top:2px;flex:none}.line{height:0;border-top:3px dashed var(--yellow);width:20px;margin-top:8px;flex:none}.health{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:2px 7px;font-size:10px}.health.live{color:var(--green)}.health.bad{color:var(--red)}button{color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 9px;cursor:pointer}.rank{border-top:1px solid var(--line);padding:7px 0;cursor:pointer}.rank:hover{color:var(--blue)}.rank b{font-size:12px}.rank small{display:block;color:var(--muted)}.legend{display:grid;grid-template-columns:18px 1fr;gap:5px 7px;font-size:11px;align-items:center}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#172027;color:#eef5f7}.leaflet-control-attribution{font-size:9px}.empty{color:var(--muted);font-size:12px;padding:5px 0}a{color:#8ec2ff}@media(max-width:760px){header{height:auto;min-height:58px;flex-wrap:wrap}.shell{height:calc(100% - 86px);grid-template-columns:1fr}.side{position:absolute;z-index:1001;width:min(310px,88vw);height:calc(100% - 86px);transform:translateX(-100%);transition:.2s}.side.open{transform:none}#menu{display:block}}@media(min-width:761px){#menu{display:none}}
-</style></head>
-<body><header><button id="menu">Layers</button><div><h1>National Weather Alert Impact</h1><div class="sub">Active NWS warnings, watches and advisories • Map 18</div></div><div class="spacer"></div><div class="ring"><span>Region</span><select id="region"><option value="us">U.S.</option><option value="ne">Northeast</option><option value="mw">Midwest</option><option value="so">South</option><option value="we">West</option></select></div><button id="refresh">Refresh</button></header>
-<div class="shell"><aside class="side" id="side">
-<div class="card"><h2>Source health</h2><span id="health" class="health">Loading</span><div id="updated" class="muted" style="margin-top:6px">Waiting for NWS…</div></div>
-<div class="card"><h2>Map layers</h2>
-<label class="toggle"><input type="checkbox" data-layer="warnings" checked><span class="sw" style="background:#ff5b5b"></span><span><b>Warnings</b><br><span class="muted">Immediate or significant hazardous weather</span></span></label>
-<label class="toggle"><input type="checkbox" data-layer="watches" checked><span class="sw" style="background:#ff974d"></span><span><b>Watches</b><br><span class="muted">Conditions favorable for hazardous weather</span></span></label>
-<label class="toggle"><input type="checkbox" data-layer="advisories"><span class="sw" style="background:#62a8ff"></span><span><b>Advisories & statements</b><br><span class="muted">Lower-severity active products</span></span></label>
-<label class="toggle"><input type="checkbox" data-layer="priority" checked><span class="line"></span><span><b>Highest impact priority</b><br><span class="muted">Top-scoring active alerts, outlined</span></span></label>
-</div>
-<div class="card"><h2>Severity legend</h2><div class="legend"><span class="sw" style="background:#a61b1b"></span><span>Extreme</span><span class="sw" style="background:#ff5b5b"></span><span>Severe</span><span class="sw" style="background:#ff974d"></span><span>Moderate</span><span class="sw" style="background:#62a8ff"></span><span>Minor / unknown</span></div></div>
-<div class="card"><h2>Highest-priority active alerts</h2><div id="ranking" class="empty">Loading active alerts…</div></div>
-<div class="card"><h2>How to read this map</h2><div class="muted">Color shows official NWS severity. Product type separates warnings, watches, and advisories. The dashed outline is a MitchellCo triage score combining NWS severity, urgency and certainty. It is not an official NWS risk score.</div></div>
-<div class="card"><h2>Sources</h2><div class="muted"><a href="https://api.weather.gov/alerts/active" target="_blank" rel="noopener">NWS active alerts API</a><br><a href="https://www.weather.gov/documentation/services-web-alerts" target="_blank" rel="noopener">NWS Alerts Web Service documentation</a><br><br>© 2026 MitchellCo Inc.</div></div>
-</aside><main id="map"></main></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-<script>
-const map=L.map('map',{preferCanvas:true,zoomControl:true}).setView([38,-97],4);L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap &copy; CARTO'}).addTo(map);
-const bounds={us:[[24,-125],[50,-66]],ne:[[37,-82],[48,-66]],mw:[[36,-104],[50,-80]],so:[[24,-107],[40,-75]],we:[[31,-125],[50,-102]]};
-const groups={warnings:L.featureGroup().addTo(map),watches:L.featureGroup().addTo(map),advisories:L.featureGroup(),priority:L.featureGroup().addTo(map)};let records=[];
-const severityValue={Extreme:4,Severe:3,Moderate:2,Minor:1,Unknown:1};const urgencyValue={Immediate:4,Expected:3,Future:2,Past:0,Unknown:1};const certaintyValue={Observed:4,Likely:3,Possible:2,Unlikely:1,Unknown:1};
-function typeOf(p){const e=(p.event||'').toLowerCase();if(e.includes('warning'))return'warnings';if(e.includes('watch'))return'watches';return'advisories'}
-function color(p){return p.severity==='Extreme'?'#a61b1b':p.severity==='Severe'?'#ff5b5b':p.severity==='Moderate'?'#ff974d':'#62a8ff'}
-function score(p){return Math.round(100*(.5*(severityValue[p.severity]||1)/4+.3*(urgencyValue[p.urgency]||1)/4+.2*(certaintyValue[p.certainty]||1)/4))}
-function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function popup(p,s){return `<b>${esc(p.event)}</b><br>${esc(p.areaDesc)}<hr style="border-color:#39444c"><b>Severity:</b> ${esc(p.severity)}<br><b>Urgency:</b> ${esc(p.urgency)}<br><b>Certainty:</b> ${esc(p.certainty)}<br><b>Priority:</b> ${s}/100<br><b>Effective:</b> ${p.effective?new Date(p.effective).toLocaleString():'—'}<br><b>Expires:</b> ${p.expires?new Date(p.expires).toLocaleString():'—'}<br><br>${esc(p.headline||'')}`}
-function clear(){Object.values(groups).forEach(g=>g.clearLayers());records=[]}
-function render(data){clear();for(const f of data.features||[]){if(!f.geometry)continue;const p=f.properties||{},s=score(p),t=typeOf(p),c=color(p);const layer=L.geoJSON(f,{style:{color:c,weight:1.5,fillColor:c,fillOpacity:t==='advisories'?.18:.3}});layer.bindPopup(popup(p,s));groups[t].addLayer(layer);records.push({p,s,t,layer,bounds:layer.getBounds()})}const top=[...records].sort((a,b)=>b.s-a.s).slice(0,Math.max(5,Math.ceil(records.length*.08)));for(const r of top){L.geoJSON(r.layer.toGeoJSON(),{style:{color:'#ffd05a',weight:3,fillOpacity:0,dashArray:'7 4'}}).bindPopup(popup(r.p,r.s)).addTo(groups.priority)}renderRanking(top.slice(0,12));applyChecks()}
-function renderRanking(rows){const el=document.getElementById('ranking');if(!rows.length){el.innerHTML='<div class="empty">No polygon-based active alerts to rank.</div>';return}el.innerHTML=rows.map((r,i)=>`<div class="rank" data-i="${i}"><b>${i+1}. ${esc(r.p.event)}</b><small>${esc(r.p.areaDesc)} • priority ${r.s}/100</small></div>`).join('');el.querySelectorAll('.rank').forEach((n,i)=>n.onclick=()=>{map.fitBounds(rows[i].bounds,{padding:[30,30],maxZoom:8});rows[i].layer.openPopup()})}
-function applyChecks(){document.querySelectorAll('[data-layer]').forEach(cb=>{const g=groups[cb.dataset.layer];if(cb.checked&&!map.hasLayer(g))g.addTo(map);if(!cb.checked&&map.hasLayer(g))map.removeLayer(g)})}
-async function load(){const h=document.getElementById('health');h.className='health';h.textContent='Loading';try{const res=await fetch('https://api.weather.gov/alerts/active',{headers:{Accept:'application/geo+json'}});if(!res.ok)throw new Error(`HTTP ${res.status}`);const data=await res.json();render(data);h.textContent='Live';h.className='health live';document.getElementById('updated').textContent=`${records.length} polygon-based active alerts • ${new Date().toLocaleString()}`}catch(e){h.textContent='Unavailable';h.className='health bad';document.getElementById('updated').textContent=`NWS request failed: ${e.message}`;document.getElementById('ranking').innerHTML='<div class="empty">Primary source unavailable. The map is intentionally not showing stale alert data.</div>'}}
-document.querySelectorAll('[data-layer]').forEach(cb=>cb.addEventListener('change',applyChecks));document.getElementById('region').addEventListener('change',e=>map.fitBounds(bounds[e.target.value],{padding:[15,15]}));document.getElementById('refresh').onclick=load;document.getElementById('menu').onclick=()=>document.getElementById('side').classList.toggle('open');load();setInterval(()=>{if(!document.hidden&&navigator.onLine)load()},120000);
-</script></body></html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="mitchellco-map-standard" content="evacwatch-v2" />
+    <meta name="mitchellco-browser-first" content="v1" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>AlertScope | National Weather Alert Impact</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230e1317'/%3E%3Cpath d='M16 5 28 26H4Z' fill='none' stroke='%23ffd05a' stroke-width='2.5'/%3E%3Cpath d='M16 11v8m0 3v1' stroke='%23ff5b5b' stroke-width='2.8' stroke-linecap='round'/%3E%3C/svg%3E"
+    />
+    <!-- Google tag (gtag.js) -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-8SVEH8WD1R"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-8SVEH8WD1R");
+    </script>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      crossorigin=""
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0e1317;
+        --panel: #161c21;
+        --card: #1f272d;
+        --line: #39444c;
+        --text: #f3f7f9;
+        --muted: #9aa8b0;
+        --blue: #62a8ff;
+        --yellow: #ffd05a;
+        --orange: #ff974d;
+        --red: #ff5b5b;
+        --purple: #c99cff;
+        --green: #7edb9a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font:
+          14px/1.45 system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      header {
+        height: 58px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0;
+      }
+      .sub,
+      .muted {
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .spacer {
+        flex: 1;
+      }
+      .ring {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 3px 5px 3px 10px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--card);
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .ring select {
+        color: var(--text);
+        border: 0;
+        border-left: 1px solid var(--line);
+        border-radius: 999px;
+        background: #11171b;
+        padding: 4px 24px 4px 8px;
+      }
+      .shell {
+        height: calc(100% - 58px);
+        display: grid;
+        grid-template-columns: 310px 1fr;
+      }
+      .side {
+        overflow: auto;
+        padding: 12px;
+        background: var(--panel);
+        border-right: 1px solid var(--line);
+      }
+      #map {
+        height: 100%;
+        background: #10171b;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+      .card h2 {
+        font-size: 12px;
+        margin: 0 0 7px;
+      }
+      .toggle {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        margin: 8px 0;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .toggle input {
+        margin-top: 2px;
+        accent-color: var(--blue);
+      }
+      .sw {
+        width: 19px;
+        height: 12px;
+        border-radius: 3px;
+        margin-top: 2px;
+        flex: none;
+      }
+      .line {
+        height: 0;
+        border-top: 3px dashed var(--yellow);
+        width: 20px;
+        margin-top: 8px;
+        flex: none;
+      }
+      .health {
+        display: inline-block;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 2px 7px;
+        font-size: 10px;
+      }
+      .health.live {
+        color: var(--green);
+      }
+      .health.bad {
+        color: var(--red);
+      }
+      button {
+        color: var(--text);
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 6px 9px;
+        cursor: pointer;
+      }
+      .rank {
+        border-top: 1px solid var(--line);
+        padding: 7px 0;
+        cursor: pointer;
+      }
+      .rank:hover {
+        color: var(--blue);
+      }
+      .rank b {
+        font-size: 12px;
+      }
+      .rank small {
+        display: block;
+        color: var(--muted);
+      }
+      .legend {
+        display: grid;
+        grid-template-columns: 18px 1fr;
+        gap: 5px 7px;
+        font-size: 11px;
+        align-items: center;
+      }
+      .leaflet-popup-content-wrapper,
+      .leaflet-popup-tip {
+        background: #172027;
+        color: #eef5f7;
+      }
+      .leaflet-control-attribution {
+        font-size: 9px;
+      }
+      .empty {
+        color: var(--muted);
+        font-size: 12px;
+        padding: 5px 0;
+      }
+      a {
+        color: #8ec2ff;
+      }
+      @media (max-width: 760px) {
+        header {
+          height: auto;
+          min-height: 58px;
+          flex-wrap: wrap;
+        }
+        .shell {
+          height: calc(100% - 86px);
+          grid-template-columns: 1fr;
+        }
+        .side {
+          position: absolute;
+          z-index: 1001;
+          width: min(310px, 88vw);
+          height: calc(100% - 86px);
+          transform: translateX(-100%);
+          transition: 0.2s;
+        }
+        .side.open {
+          transform: none;
+        }
+        #menu {
+          display: block;
+        }
+      }
+      @media (min-width: 761px) {
+        #menu {
+          display: none;
+        }
+      }
+
+      /* MitchellCo EvacWatch v2 shared UX standard */
+      .mc-question {
+        font-size: 13px;
+        font-weight: 700;
+        margin: 0 0 10px;
+        color: #fff;
+      }
+      .mc-health-card {
+        background: var(--card, #20262a);
+        border: 1px solid var(--line, #394148);
+        border-radius: 8px;
+        padding: 9px;
+        margin: 8px 0;
+      }
+      .mc-health-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        padding: 3px 0;
+        font-size: 11.5px;
+      }
+      .mc-pill {
+        font-size: 10px;
+        border: 1px solid var(--line, #394148);
+        border-radius: 999px;
+        padding: 1px 6px;
+        white-space: nowrap;
+      }
+      .mc-live {
+        color: #b8efc4;
+      }
+      .mc-retrying {
+        color: #ffbf3f;
+      }
+      .mc-unavailable {
+        color: #ff9c9c;
+      }
+      .mc-cached {
+        color: #9ccaff;
+      }
+      .mc-standard-details {
+        font-size: 11.5px;
+        color: var(--muted, #9eabb3);
+      }
+      .mc-standard-details summary {
+        cursor: pointer;
+        color: var(--text, #f6f8f9);
+      }
+    </style>
+    <script
+      data-mitchellco-runtime="evacwatch-v2"
+      data-mitchellco-performance="gridwatch-v1"
+    >
+      (() => {
+        "use strict";
+        if (window.MCMap?.performance === "gridwatch-v1") return;
+        const nativeFetch = window.fetch.bind(window);
+        const inflight = new Map();
+        const controllers = new Set();
+        const sourceState = new Map();
+        let globalGeneration = 0;
+        const friendly = (host) =>
+          ({
+            "api.weather.gov": "NWS",
+            "waterservices.usgs.gov": "USGS",
+            "earthquake.usgs.gov": "USGS Earthquakes",
+            "services3.arcgis.com": "ArcGIS",
+            "services5.arcgis.com": "ArcGIS",
+            "services2.arcgis.com": "ArcGIS",
+            "onemap.cdc.gov": "CDC/ATSDR",
+            "tigerweb.geo.census.gov": "U.S. Census",
+            "api.open-meteo.com": "Open-Meteo",
+            "api.tidesandcurrents.noaa.gov": "NOAA CO-OPS",
+          })[host] || host;
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        const retryable = (status) => [429, 502, 503, 504].includes(status);
+        const yieldControl = async () => {
+          if (globalThis.scheduler?.yield) {
+            await globalThis.scheduler.yield();
+            return;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        };
+        const idle = (timeout = 120) =>
+          new Promise((resolve) => {
+            if (typeof requestIdleCallback === "function")
+              requestIdleCallback(() => resolve(), { timeout });
+            else setTimeout(resolve, Math.min(timeout, 40));
+          });
+        async function mapLimit(items, limit, fn) {
+          const out = new Array(items.length);
+          let next = 0;
+          async function worker() {
+            while (next < items.length) {
+              const i = next++;
+              out[i] = await fn(items[i], i);
+              await yieldControl();
+            }
+          }
+          await Promise.all(
+            Array.from(
+              { length: Math.min(Math.max(1, limit), items.length) },
+              worker,
+            ),
+          );
+          return out;
+        }
+        const setState = (url, state, detail = "") => {
+          try {
+            const host = new URL(url, location.href).host;
+            if (!host || host === location.host) return;
+            sourceState.set(host, { state, detail, time: Date.now() });
+            renderHealth();
+          } catch (_) {}
+        };
+        const renderHealth = () => {
+          const root = document.getElementById("mc-runtime-health-list");
+          if (!root) return;
+          const rows = [...sourceState.entries()].sort((a, b) =>
+            a[0].localeCompare(b[0]),
+          );
+          root.innerHTML = rows.length
+            ? rows
+                .map(([host, s]) => {
+                  const cls =
+                    s.state === "Live"
+                      ? "mc-live"
+                      : s.state === "Retrying"
+                        ? "mc-retrying"
+                        : s.state === "Cached"
+                          ? "mc-cached"
+                          : "mc-unavailable";
+                  const age = Math.max(
+                    0,
+                    Math.floor((Date.now() - s.time) / 60000),
+                  );
+                  return `<div class="mc-health-row"><span>${friendly(host)}</span><span class="mc-pill ${cls}">${s.state}${s.detail ? " · " + s.detail : ""}${s.state === "Live" ? ` · ${age < 1 ? "&lt;1" : age}m` : ""}</span></div>`;
+                })
+                .join("")
+            : '<div class="mc-standard-details">Waiting for live sources…</div>';
+        };
+        function abortAll() {
+          globalGeneration += 1;
+          for (const ctl of [...controllers]) {
+            try {
+              ctl.abort();
+            } catch (_) {}
+          }
+          controllers.clear();
+          inflight.clear();
+        }
+        async function resilientFetch(input, init = {}) {
+          const req =
+            input instanceof Request ? input : new Request(input, init);
+          const method = (req.method || "GET").toUpperCase();
+          if (method !== "GET") return nativeFetch(input, init);
+          // Caller-supplied AbortSignal owns timeout/retry. Do not nest another layer.
+          if (init?.signal) {
+            try {
+              const r = await nativeFetch(input, init);
+              setState(
+                req.url,
+                r.ok ? "Live" : "Unavailable",
+                r.ok ? "" : `HTTP ${r.status}`,
+              );
+              return r;
+            } catch (e) {
+              setState(
+                req.url,
+                "Unavailable",
+                e?.name === "AbortError" ? "aborted/timeout" : "request failed",
+              );
+              throw e;
+            }
+          }
+          const url = req.url;
+          const accept = req.headers.get("accept") || "";
+          const requestKey = `${method}|${url}|${accept}`;
+          if (inflight.has(requestKey)) {
+            const r = await inflight.get(requestKey);
+            return r.clone();
+          }
+          const generation = globalGeneration;
+          const task = (async () => {
+            let lastErr;
+            for (let attempt = 0; attempt < 2; attempt++) {
+              if (generation !== globalGeneration)
+                throw new DOMException("stale region", "AbortError");
+              const ctl = new AbortController();
+              controllers.add(ctl);
+              const onParentAbort = () => ctl.abort();
+              if (req.signal) {
+                if (req.signal.aborted) ctl.abort();
+                else
+                  req.signal.addEventListener("abort", onParentAbort, {
+                    once: true,
+                  });
+              }
+              const timer = setTimeout(() => ctl.abort(), 10000); // browser-first default; legacy timeout marker 25000 is superseded;
+              try {
+                if (attempt) {
+                  setState(url, "Retrying", `attempt ${attempt + 1}/2`);
+                  await sleep(750 * 2 ** (attempt - 1));
+                }
+                const headers = new Headers(req.headers);
+                const r = await nativeFetch(
+                  new Request(req, { signal: ctl.signal, headers }),
+                );
+                if (generation !== globalGeneration)
+                  throw new DOMException("stale region", "AbortError");
+                if (r.ok) {
+                  setState(url, "Live");
+                  return r;
+                }
+                lastErr = new Error(`HTTP ${r.status}`);
+                if (!retryable(r.status)) {
+                  setState(url, "Unavailable", `HTTP ${r.status}`);
+                  return r;
+                }
+              } catch (e) {
+                lastErr = e;
+                if (e?.name === "AbortError" || generation !== globalGeneration)
+                  throw e;
+              } finally {
+                clearTimeout(timer);
+                controllers.delete(ctl);
+                req.signal?.removeEventListener?.("abort", onParentAbort);
+              }
+            }
+            setState(
+              url,
+              "Unavailable",
+              lastErr?.name === "AbortError" ? "timeout" : "request failed",
+            );
+            throw lastErr || new Error("request failed");
+          })();
+          inflight.set(requestKey, task);
+          try {
+            const r = await task;
+            return r.clone();
+          } finally {
+            inflight.delete(requestKey);
+          }
+        }
+
+        function safeLocalSet(key, value, maxBytes = 262144) {
+          try {
+            const text = String(value);
+            if (text.length * 2 > maxBytes) {
+              try {
+                window.localStorage.removeItem(key);
+              } catch (_) {}
+              return false;
+            }
+            window.localStorage.setItem(key, text);
+            return true;
+          } catch (_) {
+            try {
+              window.localStorage.removeItem(key);
+            } catch (_) {}
+            return false;
+          }
+        }
+        function safeLocalGet(key) {
+          try {
+            return window.localStorage.getItem(key);
+          } catch (_) {
+            return null;
+          }
+        }
+        function debounce(fn, wait = 150) {
+          let timer = 0;
+          return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn(...args), wait);
+          };
+        }
+
+        async function openPopup(layer, map, latlng, zoom = 8) {
+          if (!layer || !map) return;
+          map.closePopup();
+          const target =
+            typeof layer.getLayers === "function" && !layer.getPopup?.()
+              ? layer.getLayers().find((x) => x.getPopup?.())
+              : layer;
+          if (!target?.openPopup) return;
+          const open = () => {
+            try {
+              target.openPopup();
+              target.bringToFront?.();
+            } catch (_) {}
+          };
+          if (
+            latlng &&
+            Number.isFinite(latlng[0]) &&
+            Number.isFinite(latlng[1])
+          ) {
+            map.once("moveend", open);
+            map.flyTo(latlng, zoom, { duration: 0.65 });
+            setTimeout(open, 950);
+          } else open();
+        }
+        function makeGenerationGuard(state, key = "generation") {
+          state[key] = Number(state[key] || 0);
+          return {
+            next() {
+              state[key] += 1;
+              return state[key];
+            },
+            current() {
+              return state[key];
+            },
+            valid(token) {
+              return token === state[key];
+            },
+          };
+        }
+        window.MCMap = {
+          version: "evacwatch-v2",
+          performance: "gridwatch-v1",
+          nativeFetch,
+          fetch: resilientFetch,
+          openPopup,
+          makeGenerationGuard,
+          sourceState,
+          abortAll,
+          yieldControl,
+          idle,
+          mapLimit,
+          safeLocalSet,
+          safeLocalGet,
+          debounce,
+          generation: () => globalGeneration,
+        };
+        window.fetch = resilientFetch;
+        document.addEventListener(
+          "change",
+          (e) => {
+            if (e.target?.id === "region") abortAll();
+          },
+          true,
+        );
+        document.addEventListener("DOMContentLoaded", () => {
+          renderHealth();
+          setInterval(() => {
+            if (!document.hidden) renderHealth();
+          }, 30000);
+        });
+      })();
+    </script>
+  </head>
+  <body>
+    <header>
+      <button id="menu">Layers</button>
+      <div>
+        <h1>National Weather Alert Impact</h1>
+        <div class="sub">
+          Active NWS warnings, watches and advisories • Map 18
+        </div>
+      </div>
+      <div class="spacer"></div>
+      <div class="ring">
+        <span>Region</span
+        ><select id="region">
+          <option value="us">U.S.</option>
+          <option value="ne">Northeast</option>
+          <option value="mw">Midwest</option>
+          <option value="so">South</option>
+          <option value="we">West</option>
+        </select>
+      </div>
+      <button id="refresh">Refresh</button>
+    </header>
+    <div class="shell">
+      <aside class="side" id="side">
+        <div class="mc-health-card" id="mc-runtime-health">
+          <b>Data health</b>
+          <div id="mc-runtime-health-list">
+            <div class="mc-standard-details">Waiting for live sources…</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Source health</h2>
+          <span id="health" class="health">Loading</span>
+          <div id="updated" class="muted" style="margin-top: 6px">
+            Waiting for NWS…
+          </div>
+        </div>
+        <div class="card">
+          <h2>Map layers</h2>
+          <label class="toggle"
+            ><input type="checkbox" data-layer="warnings" checked /><span
+              class="sw"
+              style="background: #ff5b5b"
+            ></span
+            ><span
+              ><b>Warnings</b><br /><span class="muted"
+                >Immediate or significant hazardous weather</span
+              ></span
+            ></label
+          >
+          <label class="toggle"
+            ><input type="checkbox" data-layer="watches" checked /><span
+              class="sw"
+              style="background: #ff974d"
+            ></span
+            ><span
+              ><b>Watches</b><br /><span class="muted"
+                >Conditions favorable for hazardous weather</span
+              ></span
+            ></label
+          >
+          <label class="toggle"
+            ><input type="checkbox" data-layer="advisories" /><span
+              class="sw"
+              style="background: #62a8ff"
+            ></span
+            ><span
+              ><b>Advisories & statements</b><br /><span class="muted"
+                >Lower-severity active products</span
+              ></span
+            ></label
+          >
+          <label class="toggle"
+            ><input type="checkbox" data-layer="priority" checked /><span
+              class="line"
+            ></span
+            ><span
+              ><b>Highest impact priority</b><br /><span class="muted"
+                >Top-scoring active alerts, outlined</span
+              ></span
+            ></label
+          >
+        </div>
+        <div class="card">
+          <h2>Severity legend</h2>
+          <div class="legend">
+            <span class="sw" style="background: #a61b1b"></span
+            ><span>Extreme</span
+            ><span class="sw" style="background: #ff5b5b"></span
+            ><span>Severe</span
+            ><span class="sw" style="background: #ff974d"></span
+            ><span>Moderate</span
+            ><span class="sw" style="background: #62a8ff"></span
+            ><span>Minor / unknown</span>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Highest-priority active alerts</h2>
+          <div id="ranking" class="empty">Loading active alerts…</div>
+        </div>
+        <div class="card">
+          <h2>How to read this map</h2>
+          <div class="muted">
+            Color shows official NWS severity. Product type separates warnings,
+            watches, and advisories. The dashed outline is a MitchellCo triage
+            score combining NWS severity, urgency and certainty. It is not an
+            official NWS risk score.
+          </div>
+        </div>
+        <div class="card">
+          <h2>Sources</h2>
+          <div class="muted">
+            <a
+              href="https://api.weather.gov/alerts/active"
+              target="_blank"
+              rel="noopener"
+              >NWS active alerts API</a
+            ><br /><a
+              href="https://www.weather.gov/documentation/services-web-alerts"
+              target="_blank"
+              rel="noopener"
+              >NWS Alerts Web Service documentation</a
+            ><br /><br />© 2026 MitchellCo Inc.
+          </div>
+        </div>
+      </aside>
+      <main id="map"></main>
+    </div>
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      crossorigin=""
+    ></script>
+    <script>
+      const map = L.map("map", {
+        preferCanvas: true,
+        zoomControl: true,
+      }).setView([38, -97], 4);
+      L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        { maxZoom: 19, attribution: "&copy; OpenStreetMap &copy; CARTO" },
+      ).addTo(map);
+      const bounds = {
+        us: [
+          [24, -125],
+          [50, -66],
+        ],
+        ne: [
+          [37, -82],
+          [48, -66],
+        ],
+        mw: [
+          [36, -104],
+          [50, -80],
+        ],
+        so: [
+          [24, -107],
+          [40, -75],
+        ],
+        we: [
+          [31, -125],
+          [50, -102],
+        ],
+      };
+      const groups = {
+        warnings: L.featureGroup().addTo(map),
+        watches: L.featureGroup().addTo(map),
+        advisories: L.featureGroup(),
+        priority: L.featureGroup().addTo(map),
+      };
+      let records = [];
+      const severityValue = {
+        Extreme: 4,
+        Severe: 3,
+        Moderate: 2,
+        Minor: 1,
+        Unknown: 1,
+      };
+      const urgencyValue = {
+        Immediate: 4,
+        Expected: 3,
+        Future: 2,
+        Past: 0,
+        Unknown: 1,
+      };
+      const certaintyValue = {
+        Observed: 4,
+        Likely: 3,
+        Possible: 2,
+        Unlikely: 1,
+        Unknown: 1,
+      };
+      function typeOf(p) {
+        const e = (p.event || "").toLowerCase();
+        if (e.includes("warning")) return "warnings";
+        if (e.includes("watch")) return "watches";
+        return "advisories";
+      }
+      function color(p) {
+        return p.severity === "Extreme"
+          ? "#a61b1b"
+          : p.severity === "Severe"
+            ? "#ff5b5b"
+            : p.severity === "Moderate"
+              ? "#ff974d"
+              : "#62a8ff";
+      }
+      function score(p) {
+        return Math.round(
+          100 *
+            ((0.5 * (severityValue[p.severity] || 1)) / 4 +
+              (0.3 * (urgencyValue[p.urgency] || 1)) / 4 +
+              (0.2 * (certaintyValue[p.certainty] || 1)) / 4),
+        );
+      }
+      function esc(s) {
+        return String(s ?? "").replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
+      function popup(p, s) {
+        return `<b>${esc(p.event)}</b><br>${esc(p.areaDesc)}<hr style="border-color:#39444c"><b>Severity:</b> ${esc(p.severity)}<br><b>Urgency:</b> ${esc(p.urgency)}<br><b>Certainty:</b> ${esc(p.certainty)}<br><b>Priority:</b> ${s}/100<br><b>Effective:</b> ${p.effective ? new Date(p.effective).toLocaleString() : "—"}<br><b>Expires:</b> ${p.expires ? new Date(p.expires).toLocaleString() : "—"}<br><br>${esc(p.headline || "")}`;
+      }
+      function clear() {
+        Object.values(groups).forEach((g) => g.clearLayers());
+        records = [];
+      }
+      function render(data) {
+        clear();
+        for (const f of data.features || []) {
+          if (!f.geometry) continue;
+          const p = f.properties || {},
+            s = score(p),
+            t = typeOf(p),
+            c = color(p);
+          const layer = L.geoJSON(f, {
+            style: {
+              color: c,
+              weight: 1.5,
+              fillColor: c,
+              fillOpacity: t === "advisories" ? 0.18 : 0.3,
+            },
+          });
+          layer.bindPopup(popup(p, s));
+          groups[t].addLayer(layer);
+          records.push({ p, s, t, layer, bounds: layer.getBounds() });
+        }
+        const top = [...records]
+          .sort((a, b) => b.s - a.s)
+          .slice(0, Math.max(5, Math.ceil(records.length * 0.08)));
+        for (const r of top) {
+          L.geoJSON(r.layer.toGeoJSON(), {
+            style: {
+              color: "#ffd05a",
+              weight: 3,
+              fillOpacity: 0,
+              dashArray: "7 4",
+            },
+          })
+            .bindPopup(popup(r.p, r.s))
+            .addTo(groups.priority);
+        }
+        renderRanking(top.slice(0, 12));
+        applyChecks();
+      }
+      function renderRanking(rows) {
+        const el = document.getElementById("ranking");
+        if (!rows.length) {
+          el.innerHTML =
+            '<div class="empty">No polygon-based active alerts to rank.</div>';
+          return;
+        }
+        el.innerHTML = rows
+          .map(
+            (r, i) =>
+              `<div class="rank" data-i="${i}"><b>${i + 1}. ${esc(r.p.event)}</b><small>${esc(r.p.areaDesc)} • priority ${r.s}/100</small></div>`,
+          )
+          .join("");
+        el.querySelectorAll(".rank").forEach(
+          (n, i) =>
+            (n.onclick = () => {
+              map.fitBounds(rows[i].bounds, { padding: [30, 30], maxZoom: 8 });
+              rows[i].layer.openPopup();
+            }),
+        );
+      }
+      function applyChecks() {
+        document.querySelectorAll("[data-layer]").forEach((cb) => {
+          const g = groups[cb.dataset.layer];
+          if (cb.checked && !map.hasLayer(g)) g.addTo(map);
+          if (!cb.checked && map.hasLayer(g)) map.removeLayer(g);
+        });
+      }
+      async function load() {
+        const h = document.getElementById("health");
+        h.className = "health";
+        h.textContent = "Loading";
+        try {
+          const res = await fetch("https://api.weather.gov/alerts/active", {
+            headers: { Accept: "application/geo+json" },
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          render(data);
+          h.textContent = "Live";
+          h.className = "health live";
+          document.getElementById("updated").textContent =
+            `${records.length} polygon-based active alerts • ${new Date().toLocaleString()}`;
+        } catch (e) {
+          h.textContent = "Unavailable";
+          h.className = "health bad";
+          document.getElementById("updated").textContent =
+            `NWS request failed: ${e.message}`;
+          document.getElementById("ranking").innerHTML =
+            '<div class="empty">Primary source unavailable. The map is intentionally not showing stale alert data.</div>';
+        }
+      }
+      document
+        .querySelectorAll("[data-layer]")
+        .forEach((cb) => cb.addEventListener("change", applyChecks));
+      document
+        .getElementById("region")
+        .addEventListener("change", (e) =>
+          map.fitBounds(bounds[e.target.value], { padding: [15, 15] }),
+        );
+      document.getElementById("refresh").onclick = load;
+      document.getElementById("menu").onclick = () =>
+        document.getElementById("side").classList.toggle("open");
+      load();
+      setInterval(() => {
+        if (!document.hidden && navigator.onLine) load();
+      }, 120000);
+    </script>
+  </body>
+</html>
